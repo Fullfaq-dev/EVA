@@ -15,11 +15,11 @@ export const manageProfile = async ({ action, data }) => {
         const { data: profiles, error } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('telegram_id', data.telegram_id)
-          .single();
+          .eq('telegram_id', data.telegram_id);
         
-        if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
-        return { data: { profile: profiles } };
+        if (error) throw error;
+        // Возвращаем null если пользователь не найден
+        return { data: { profile: profiles && profiles.length > 0 ? profiles[0] : null } };
       }
       
       case 'create': {

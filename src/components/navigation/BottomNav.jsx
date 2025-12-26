@@ -12,7 +12,7 @@ const navItems = [
 
 export default function BottomNav() {
   const location = useLocation();
-  const currentPath = location.pathname;
+  const currentPath = location.pathname.toLowerCase();
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 pb-safe z-50">
@@ -20,7 +20,7 @@ export default function BottomNav() {
         {navItems.map((item) => {
           const Icon = item.icon;
           const url = createPageUrl(item.page);
-          const isActive = currentPath.includes(item.page);
+          const isActive = currentPath.includes(item.page.toLowerCase());
           
           return (
             <Link

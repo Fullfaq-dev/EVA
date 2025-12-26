@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { manageProfile } from '@/api/functions';
 import { createPageUrl } from '@/utils';
+import { toast } from 'sonner';
 
 import GenderStep from '@/components/onboarding/GenderStep';
 import MeasurementsStep from '@/components/onboarding/MeasurementsStep';

@@ -43,8 +43,13 @@ function _getCurrentPage(url) {
         urlLastPart = urlLastPart.split('?')[0];
     }
 
+    // Если пустой URL (корневой путь), возвращаем Home
+    if (!urlLastPart) {
+        return 'Home';
+    }
+
     const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
-    return pageName || Object.keys(PAGES)[0];
+    return pageName || 'Home';
 }
 
 // Create a wrapper component that uses useLocation inside the Router context
@@ -54,24 +59,24 @@ function PagesContent() {
     
     return (
         <Layout currentPageName={currentPage}>
-            <Routes>            
+            <Routes>
                 
-                    <Route path="/" element={<Analysis />} />
+                    <Route path="/" element={<Home />} />
                 
                 
-                <Route path="/Analysis" element={<Analysis />} />
+                <Route path="/analysis" element={<Analysis />} />
                 
-                <Route path="/Dashboard" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 
-                <Route path="/FoodDiary" element={<FoodDiary />} />
+                <Route path="/fooddiary" element={<FoodDiary />} />
                 
-                <Route path="/Home" element={<Home />} />
+                <Route path="/home" element={<Home />} />
                 
-                <Route path="/Onboarding" element={<Onboarding />} />
+                <Route path="/onboarding" element={<Onboarding />} />
                 
-                <Route path="/Profile" element={<Profile />} />
+                <Route path="/profile" element={<Profile />} />
                 
-                <Route path="/Stats" element={<Stats />} />
+                <Route path="/stats" element={<Stats />} />
                 
             </Routes>
         </Layout>
