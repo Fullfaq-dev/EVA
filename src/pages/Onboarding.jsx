@@ -137,6 +137,7 @@ export default function Onboarding() {
   const handleComplete = async () => {
     if (!telegramId) {
       toast.error('Ошибка: не получен Telegram ID');
+      console.error('Telegram ID not found');
       return;
     }
     
@@ -144,22 +145,28 @@ export default function Onboarding() {
     try {
       const nutrition = calculatedData || calculateNutrition();
       
+      console.log('Starting profile save with telegram_id:', telegramId);
+      console.log('Form data:', formData);
+      console.log('Nutrition data:', nutrition);
+      
       // Проверяем, есть ли уже профиль
       const { data: existing } = await manageProfile({
         action: 'get',
         data: { telegram_id: telegramId }
       });
       
+      console.log('Existing profile:', existing);
+      
       const profileData = {
         telegram_id: telegramId,
         full_name: telegramName || 'Пользователь',
         gender: formData.gender,
-        height: formData.height,
-        weight: formData.weight,
-        age: formData.age,
+        height: parseInt(formData.height),
+        weight: parseFloat(formData.weight),
+        age: parseInt(formData.age),
         activity_level: formData.activity_level,
         goal: formData.goal,
-        problems: formData.problems,
+        problems: formData.problems || '',
         daily_calories: Math.round(nutrition.dailyCalories),
         daily_protein: Math.round(nutrition.dailyProtein),
         daily_fat: Math.round(nutrition.dailyFat),
@@ -169,24 +176,40 @@ export default function Onboarding() {
         onboarding_completed: true
       };
       
+      console.log('Profile data to save:', profileData);
+      
+      let result;
       if (existing.profile) {
-        // Обновляем существующий
-        await manageProfile({
+        console.log('Updating existing profile...');
+        result = await manageProfile({
           action: 'update',
           data: profileData
         });
       } else {
-        // Создаем новый
-        await manageProfile({
+        console.log('Creating new profile...');
+        result = await manageProfile({
           action: 'create',
           data: profileData
         });
       }
       
-      window.location.href = createPageUrl('Dashboard');
+      console.log('Save result:', result);
+      toast.success('Профиль успешно сохранён!');
+      
+      setTimeout(() => {
+        window.location.href = createPageUrl('Dashboard');
+      }, 500);
     } catch (error) {
       console.error('Error saving profile:', error);
-      toast.error('Ошибка сохранения профиля');
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        error: error
+      });
+      
+      // Показываем более детальную ошибку
+      const errorMessage = error.message || 'Неизвестная ошибка';
+      toast.error(`Ошибка сохранения профиля: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
