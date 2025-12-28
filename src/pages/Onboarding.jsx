@@ -30,28 +30,6 @@ export default function Onboarding() {
   });
   const [calculatedData, setCalculatedData] = useState(null);
 
-  // Проверяем, есть ли уже профиль
-  useEffect(() => {
-    const checkProfile = async () => {
-      if (!telegramId) return;
-      
-      try {
-        const { data } = await manageProfile({
-          action: 'get',
-          data: { telegram_id: telegramId }
-        });
-        
-        if (data.profile && data.profile.onboarding_completed) {
-          window.location.href = createPageUrl('Dashboard');
-        }
-      } catch (error) {
-        console.error('Error checking profile:', error);
-      }
-    };
-    
-    checkProfile();
-  }, [telegramId]);
-
   const calculateNutritionData = () => {
     return calculateNutrition(formData);
   };

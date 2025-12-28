@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import BottomNav from '@/components/navigation/BottomNav';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export default function Layout({ children, currentPageName }) {
   const showNav = ['Dashboard', 'FoodDiary', 'Stats', 'Profile', 'Analysis'].includes(currentPageName);
@@ -19,41 +20,43 @@ export default function Layout({ children, currentPageName }) {
   }, []);
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <style>{`
-        :root {
-          --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-        }
-        .pb-safe {
-          padding-bottom: max(8px, env(safe-area-inset-bottom));
-        }
-        body {
-          -webkit-tap-highlight-color: transparent;
-          -webkit-touch-callout: none;
-          -webkit-user-select: none;
-          user-select: none;
-        }
-        input, textarea {
-          -webkit-user-select: auto;
-          user-select: auto;
-        }
-      `}</style>
-      
-      <Toaster 
-        position="top-center" 
-        richColors 
-        toastOptions={{
-          style: {
-            borderRadius: '12px'
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
+        <style>{`
+          :root {
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           }
-        }}
-      />
-      
-      <main className={showNav ? 'pb-20' : ''}>
-        {children}
-      </main>
-      
-      {showNav && <BottomNav />}
-    </div>
+          .pb-safe {
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+          }
+          body {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+          }
+          input, textarea {
+            -webkit-user-select: auto;
+            user-select: auto;
+          }
+        `}</style>
+        
+        <Toaster
+          position="top-center"
+          richColors
+          toastOptions={{
+            style: {
+              borderRadius: '12px'
+            }
+          }}
+        />
+        
+        <main className={showNav ? 'pb-20' : ''}>
+          {children}
+        </main>
+        
+        {showNav && <BottomNav />}
+      </div>
+    </AuthGuard>
   );
 }
