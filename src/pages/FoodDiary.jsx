@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFoodEntries, createFoodEntry } from '@/api/functions';
+import { getFoodEntries, createFoodEntry, deleteFoodEntry } from '@/api/functions';
 import { UploadFile } from '@/api/integrations';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Send, Image, ArrowLeft, Plus, Utensils } from 'lucide-react';
+import { Camera, Send, Image, ArrowLeft, Plus, Utensils, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
@@ -77,6 +77,26 @@ export default function FoodDiary() {
       toast.success('Запись добавлена! Анализируем...', { icon: '🍽️' });
     }
   });
+
+  const deleteEntryMutation = useMutation({
+    mutationFn: async (entryId) => {
+      return await deleteFoodEntry({ entry_id: entryId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['foodEntries']);
+      toast.success('Запись удалена', { icon: '🗑️' });
+    },
+    onError: (error) => {
+      toast.error('Ошибка при удалении записи');
+      console.error('Delete error:', error);
+    }
+  });
+
+  const handleDeleteEntry = async (entry, mealName) => {
+    if (confirm(`Удалить запись "${mealName}"?`)) {
+      await deleteEntryMutation.mutateAsync(entry.id);
+    }
+  };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -201,14 +221,14 @@ export default function FoodDiary() {
                 {mealEntries.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {mealEntries.map((entry) => (
-                      <div 
+                      <div
                         key={entry.id}
-                        className="bg-gray-50 rounded-xl p-3 flex items-center gap-3"
+                        className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 group"
                       >
                         {entry.photo_url ? (
-                          <img 
-                            src={entry.photo_url} 
-                            alt="" 
+                          <img
+                            src={entry.photo_url}
+                            alt=""
                             className="w-12 h-12 rounded-lg object-cover"
                           />
                         ) : (
@@ -231,6 +251,13 @@ export default function FoodDiary() {
                             </p>
                           </div>
                         )}
+                        <button
+                          onClick={() => handleDeleteEntry(entry, meal.label)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
+                          title="Удалить запись"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
                       </div>
                     ))}
                   </div>

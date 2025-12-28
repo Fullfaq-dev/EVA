@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { manageProfile } from '@/api/functions';
 import { Reminder } from '@/api/entities';
+import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { motion } from 'framer-motion';
 import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Bell, ChevronRight, Edit2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -96,7 +97,27 @@ export default function Profile() {
   };
 
   const handleSave = () => {
-    updateProfileMutation.mutate(editData);
+    // Пересчитываем КБЖУ при изменении параметров
+    const recalculatedNutrition = calculateNutrition({
+      gender: profile.gender,
+      height: editData.height,
+      weight: editData.weight,
+      age: editData.age,
+      activity_level: profile.activity_level,
+      goal: profile.goal
+    });
+
+    const updatedData = {
+      ...editData,
+      daily_calories: recalculatedNutrition.dailyCalories,
+      daily_protein: recalculatedNutrition.dailyProtein,
+      daily_fat: recalculatedNutrition.dailyFat,
+      daily_carbs: recalculatedNutrition.dailyCarbs,
+      water_norm: recalculatedNutrition.waterNorm
+    };
+
+    updateProfileMutation.mutate(updatedData);
+    toast.success('КБЖУ пересчитаны на основе новых параметров', { icon: '🔄' });
   };
 
   const isReminderEnabled = (type) => {

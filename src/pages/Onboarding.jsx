@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { manageProfile } from '@/api/functions';
 import { createPageUrl } from '@/utils';
+import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { toast } from 'sonner';
 
 import GenderStep from '@/components/onboarding/GenderStep';
@@ -51,78 +52,14 @@ export default function Onboarding() {
     checkProfile();
   }, [telegramId]);
 
-  const calculateNutrition = () => {
-    const { gender, height, weight, age, activity_level, goal } = formData;
-    
-    // Формула Миффлина-Сан Жеора
-    let bmr;
-    if (gender === 'male') {
-      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
-    } else {
-      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
-    }
-    
-    // Коэффициент активности
-    const activityMultipliers = {
-      sedentary: 1.2,
-      moderate: 1.55,
-      active: 1.9
-    };
-    
-    let tdee = bmr * activityMultipliers[activity_level];
-    
-    // Корректировка по цели
-    const goalAdjustments = {
-      gut_health: 1,
-      weight_loss: 0.85,
-      muscle_gain: 1.15,
-      maintenance: 1
-    };
-    
-    const dailyCalories = tdee * goalAdjustments[goal];
-    
-    // Расчёт БЖУ
-    let proteinRatio, fatRatio, carbRatio;
-    
-    switch (goal) {
-      case 'muscle_gain':
-        proteinRatio = 0.3;
-        fatRatio = 0.25;
-        carbRatio = 0.45;
-        break;
-      case 'weight_loss':
-        proteinRatio = 0.35;
-        fatRatio = 0.3;
-        carbRatio = 0.35;
-        break;
-      default:
-        proteinRatio = 0.25;
-        fatRatio = 0.3;
-        carbRatio = 0.45;
-    }
-    
-    const dailyProtein = (dailyCalories * proteinRatio) / 4;
-    const dailyFat = (dailyCalories * fatRatio) / 9;
-    const dailyCarbs = (dailyCalories * carbRatio) / 4;
-    
-    // Норма воды
-    let waterNorm = weight * 30;
-    if (activity_level === 'active') waterNorm *= 1.3;
-    else if (activity_level === 'moderate') waterNorm *= 1.15;
-    
-    return {
-      dailyCalories,
-      dailyProtein,
-      dailyFat,
-      dailyCarbs,
-      waterNorm
-    };
+  const calculateNutritionData = () => {
+    return calculateNutrition(formData);
   };
 
   const handleNext = () => {
     if (step === 3) {
       // После шага с целью - рассчитываем
-      const nutrition = calculateNutrition();
+      const nutrition = calculateNutritionData();
       console.log('Calculated nutrition:', nutrition);
       console.log('Form data:', formData);
       setCalculatedData(nutrition);
@@ -143,7 +80,7 @@ export default function Onboarding() {
     
     setLoading(true);
     try {
-      const nutrition = calculatedData || calculateNutrition();
+      const nutrition = calculatedData || calculateNutritionData();
       
       console.log('Starting profile save with telegram_id:', telegramId);
       console.log('Form data:', formData);

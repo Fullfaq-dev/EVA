@@ -229,3 +229,19 @@ export const getFoodEntries = async ({ telegram_id }) => {
     throw error;
   }
 };
+
+// Delete Food Entry
+export const deleteFoodEntry = async ({ entry_id }) => {
+  try {
+    const { error } = await supabase
+      .from('food_entries')
+      .delete()
+      .eq('id', entry_id);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('deleteFoodEntry error:', error);
+    throw error;
+  }
+};

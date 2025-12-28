@@ -6,6 +6,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    // Запускаем микровибрацию при старте проверки
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+    }
+
     const checkUser = async () => {
       let telegramId = null;
       
@@ -23,6 +28,11 @@ export default function Home() {
       if (telegramId) {
         // Проверяем есть ли профиль
         const profiles = await UserProfile.filter({ telegram_id: telegramId });
+        
+        // Микровибрация при успешной проверке
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
         
         if (profiles.length > 0 && profiles[0].onboarding_completed) {
           window.location.href = createPageUrl('Dashboard');
