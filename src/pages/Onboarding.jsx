@@ -87,6 +87,8 @@ export default function Onboarding() {
         daily_fat: Math.round(nutrition.dailyFat),
         daily_carbs: Math.round(nutrition.dailyCarbs),
         water_norm: Math.round(nutrition.waterNorm),
+        bmi: nutrition.bmi,
+        weight_status: nutrition.weightStatus,
         total_points: 0,
         onboarding_completed: true
       };

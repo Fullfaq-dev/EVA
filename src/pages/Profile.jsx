@@ -94,7 +94,9 @@ export default function Profile() {
       daily_protein: recalculatedNutrition.dailyProtein,
       daily_fat: recalculatedNutrition.dailyFat,
       daily_carbs: recalculatedNutrition.dailyCarbs,
-      water_norm: recalculatedNutrition.waterNorm
+      water_norm: recalculatedNutrition.waterNorm,
+      bmi: recalculatedNutrition.bmi,
+      weight_status: recalculatedNutrition.weightStatus
     };
 
     updateProfileMutation.mutate(updatedData);
