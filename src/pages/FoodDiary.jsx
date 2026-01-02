@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFoodEntries, createFoodEntry, deleteFoodEntry } from '@/api/functions';
 import { UploadFile } from '@/api/integrations';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Send, Image, ArrowLeft, Plus, Utensils, Trash2 } from 'lucide-react';
+import { Camera, Send, Image, ArrowLeft, Plus, Utensils, Trash2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { format } from 'date-fns';
+import { format, subDays, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
@@ -17,7 +17,7 @@ const mealTypes = [
   { id: 'breakfast', label: 'Завтрак', emoji: '🌅' },
   { id: 'lunch', label: 'Обед', emoji: '☀️' },
   { id: 'dinner', label: 'Ужин', emoji: '🌙' },
-  { id: 'snack', label: 'Перекус', emoji: '🍎' }
+  { id: 'snack', label: 'Перекус/Напиток', emoji: '🍎' }
 ];
 
 export default function FoodDiary() {
@@ -28,9 +28,12 @@ export default function FoodDiary() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showWeekView, setShowWeekView] = useState(false);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
   const today = format(new Date(), 'yyyy-MM-dd');
+  const currentDate = format(selectedDate, 'yyyy-MM-dd');
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['foodEntries', telegramId, today],
@@ -44,9 +47,20 @@ export default function FoodDiary() {
     enabled: !!telegramId
   });
 
-  const todayEntries = entries.filter(e => 
-    format(new Date(e.created_date), 'yyyy-MM-dd') === today
+  const currentEntries = entries.filter(e =>
+    format(new Date(e.created_date), 'yyyy-MM-dd') === currentDate
   );
+
+  // Calculate week dates
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  // Filter entries for the current week
+  const weekEntries = entries.filter(e => {
+    const entryDate = new Date(e.created_date);
+    return entryDate >= weekStart && entryDate <= weekEnd;
+  });
 
   const createEntryMutation = useMutation({
     mutationFn: async (data) => {
@@ -120,12 +134,12 @@ export default function FoodDiary() {
       return;
     }
     
-    // Проверка на повторное добавление завтрака/обеда/ужина
+    // Проверка на повторное добавление завтрака/обеда/ужина для текущей даты
     if (['breakfast', 'lunch', 'dinner'].includes(selectedMealType)) {
-      const alreadyExists = todayEntries.some(e => e.meal_type === selectedMealType);
+      const alreadyExists = currentEntries.some(e => e.meal_type === selectedMealType);
       if (alreadyExists) {
         const mealName = mealTypes.find(m => m.id === selectedMealType)?.label.toLowerCase();
-        toast.error(`Вы уже добавили ${mealName} сегодня`);
+        toast.error(`Вы уже добавили ${mealName} в этот день`);
         return;
       }
     }
@@ -160,29 +174,187 @@ export default function FoodDiary() {
     );
   }
 
+  const goToPreviousDay = () => {
+    setSelectedDate(prev => subDays(prev, 1));
+  };
+
+  const goToNextDay = () => {
+    const nextDay = addDays(selectedDate, 1);
+    if (nextDay <= new Date()) {
+      setSelectedDate(nextDay);
+    }
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-md mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <Link 
+          <Link
             to={createPageUrl('Dashboard')}
             className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold text-gray-900">Пищевой дневник</h1>
             <p className="text-sm text-gray-500">
-              {format(new Date(), "d MMMM", { locale: ru })}
+              {format(selectedDate, "d MMMM", { locale: ru })}
             </p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowWeekView(!showWeekView)}
+            className="text-emerald-600 hover:text-emerald-700"
+          >
+            <Calendar className="w-5 h-5" />
+          </Button>
         </div>
 
-        {/* Today's meals */}
+        {/* Date Navigation */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToPreviousDay}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            
+            <div className="text-center">
+              <p className="font-semibold text-gray-900">
+                {isSameDay(selectedDate, new Date())
+                  ? 'Сегодня'
+                  : format(selectedDate, "d MMMM yyyy", { locale: ru })}
+              </p>
+              <p className="text-xs text-gray-500">
+                {format(selectedDate, "EEEE", { locale: ru })}
+              </p>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToNextDay}
+              disabled={isSameDay(selectedDate, new Date())}
+              className="text-gray-600 hover:text-gray-900 disabled:opacity-30"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {!isSameDay(selectedDate, new Date()) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToToday}
+              className="w-full mt-3 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+            >
+              Вернуться к сегодня
+            </Button>
+          )}
+        </div>
+
+        {/* Week View */}
+        <AnimatePresence>
+          {showWeekView && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4 overflow-hidden"
+            >
+              <h3 className="font-semibold text-gray-900 mb-3">
+                Неделя: {format(weekStart, "d MMM", { locale: ru })} - {format(weekEnd, "d MMM", { locale: ru })}
+              </h3>
+              <div className="grid grid-cols-7 gap-2">
+                {weekDays.map((day) => {
+                  const dayEntries = weekEntries.filter(e =>
+                    isSameDay(new Date(e.created_date), day)
+                  );
+                  const dayCalories = dayEntries.reduce((sum, e) => sum + (e.calories || 0), 0);
+                  const isToday = isSameDay(day, new Date());
+                  const isSelected = isSameDay(day, selectedDate);
+                  const isFuture = day > new Date();
+
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      onClick={() => !isFuture && setSelectedDate(day)}
+                      disabled={isFuture}
+                      className={`p-2 rounded-lg text-center transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500 text-white'
+                          : isToday
+                          ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-300'
+                          : isFuture
+                          ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                          : dayCalories > 0
+                          ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="text-xs font-medium">
+                        {format(day, "EEE", { locale: ru })}
+                      </div>
+                      <div className="text-lg font-bold">
+                        {format(day, "d")}
+                      </div>
+                      {dayCalories > 0 && (
+                        <div className="text-[10px] mt-1">
+                          {dayCalories}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Week Summary */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Итого за неделю:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-emerald-50 rounded-lg p-2">
+                    <span className="text-gray-600">Калории:</span>
+                    <span className="ml-1 font-semibold text-emerald-700">
+                      {weekEntries.reduce((sum, e) => sum + (e.calories || 0), 0)} ккал
+                    </span>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-2">
+                    <span className="text-gray-600">Белки:</span>
+                    <span className="ml-1 font-semibold text-blue-700">
+                      {weekEntries.reduce((sum, e) => sum + (parseFloat(e.protein) || 0), 0).toFixed(1)} г
+                    </span>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-2">
+                    <span className="text-gray-600">Жиры:</span>
+                    <span className="ml-1 font-semibold text-yellow-700">
+                      {weekEntries.reduce((sum, e) => sum + (parseFloat(e.fat) || 0), 0).toFixed(1)} г
+                    </span>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-2">
+                    <span className="text-gray-600">Углеводы:</span>
+                    <span className="ml-1 font-semibold text-orange-700">
+                      {weekEntries.reduce((sum, e) => sum + (parseFloat(e.carbs) || 0), 0).toFixed(1)} г
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Current day meals */}
         <div className="space-y-3 mb-6">
           {mealTypes.map((meal) => {
-            const mealEntries = todayEntries.filter(e => e.meal_type === meal.id);
+            const mealEntries = currentEntries.filter(e => e.meal_type === meal.id);
             
             return (
               <motion.div
@@ -243,6 +415,27 @@ export default function FoodDiary() {
                           <p className="text-xs text-gray-400">
                             {format(new Date(entry.created_date), 'HH:mm')}
                           </p>
+                          
+                          {/* Macronutrients */}
+                          {(entry.protein > 0 || entry.fat > 0 || entry.carbs > 0) && (
+                            <div className="flex gap-2 mt-1">
+                              {entry.protein > 0 && (
+                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                  Б: {parseFloat(entry.protein).toFixed(1)}г
+                                </span>
+                              )}
+                              {entry.fat > 0 && (
+                                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">
+                                  Ж: {parseFloat(entry.fat).toFixed(1)}г
+                                </span>
+                              )}
+                              {entry.carbs > 0 && (
+                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                                  У: {parseFloat(entry.carbs).toFixed(1)}г
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         {entry.calories > 0 && (
                           <div className="text-right">
