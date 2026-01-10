@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnalysisUpload } from '@/api/entities';
 import { UploadFile } from '@/api/integrations';
+import { extractTextFromPDF } from '@/utils/pdfParser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, 
@@ -57,23 +58,36 @@ export default function Analysis() {
     mutationFn: async () => {
       if (!selectedFile) return;
       
-      const result = await UploadFile({ file: selectedFile });
+      let fileUrl = '';
+      let extractedText = null;
+      const isPdf = selectedFile.type.includes('pdf');
+
+      if (isPdf) {
+        // Для PDF извлекаем текст на клиенте и не загружаем в Storage
+        extractedText = await extractTextFromPDF(selectedFile);
+        fileUrl = 'text://extracted'; // Плейсхолдер, так как поле NOT NULL
+      } else {
+        // Для изображений оставляем старую логику загрузки
+        const result = await UploadFile({ file: selectedFile });
+        fileUrl = result.file_url;
+      }
       
       const analysis = await AnalysisUpload.create({
         user_telegram_id: telegramId,
-        file_url: result.file_url,
-        file_type: selectedFile.type.includes('pdf') ? 'pdf' : 'image',
+        file_url: fileUrl,
+        file_type: isPdf ? 'pdf' : 'image',
         analysis_name: analysisName || 'Анализ ' + format(new Date(), 'd.MM.yyyy')
       });
       
-      // Отправляем вебхуки на n8n для OCR обработки
+      // Отправляем вебхуки на n8n для обработки
       await sendAnalysisWebhooks({
         analysis_id: analysis.id,
         telegram_id: telegramId,
-        file_url: result.file_url,
+        file_url: fileUrl,
         file_type: analysis.file_type,
         analysis_name: analysis.analysis_name,
-        created_date: analysis.created_date
+        created_date: analysis.created_date,
+        extracted_text: extractedText
       });
       
       return analysis;
@@ -82,7 +96,7 @@ export default function Analysis() {
       queryClient.invalidateQueries(['analyses']);
       setSelectedFile(null);
       setAnalysisName('');
-      toast.success('Анализ загружен! Расшифровка будет отправлена в чат', { icon: '📊' });
+      toast.success('Анализ отправлен на обработку!', { icon: '📊' });
     }
   });
 
@@ -102,6 +116,8 @@ export default function Analysis() {
     setIsUploading(true);
     try {
       await uploadMutation.mutateAsync();
+    } catch (error) {
+      toast.error(error.message || 'Ошибка при загрузке');
     } finally {
       setIsUploading(false);
     }
@@ -119,6 +135,7 @@ export default function Analysis() {
       file_type: data.file_type,
       analysis_name: data.analysis_name,
       created_date: data.created_date,
+      extracted_text: data.extracted_text,
       timestamp: new Date().toISOString()
     };
     
@@ -261,15 +278,21 @@ export default function Analysis() {
             </Accordion>
 
             <div className="mt-8 pt-6 border-t border-gray-100">
-              <a 
-                href={selectedAnalysis.file_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors"
-              >
-                <ClipboardList className="w-5 h-5" />
-                Открыть оригинал файла
-              </a>
+              {selectedAnalysis.file_url && selectedAnalysis.file_url !== 'text://extracted' ? (
+                <a 
+                  href={selectedAnalysis.file_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors"
+                >
+                  <ClipboardList className="w-5 h-5" />
+                  Открыть оригинал файла
+                </a>
+              ) : (
+                <div className="text-center text-sm text-gray-400 italic">
+                  Оригинал файла не был сохранен (только текст)
+                </div>
+              )}
             </div>
           </div>
         </div>
