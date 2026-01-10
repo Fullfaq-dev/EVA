@@ -3,7 +3,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnalysisUpload } from '@/api/entities';
 import { UploadFile } from '@/api/integrations';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, ArrowLeft, Image, File, Loader2, Pill, AlertCircle } from 'lucide-react';
+import { 
+  Upload, 
+  FileText, 
+  ArrowLeft, 
+  Image, 
+  File, 
+  Loader2, 
+  Pill, 
+  AlertCircle, 
+  ChevronRight, 
+  Search, 
+  Activity, 
+  ClipboardList, 
+  Stethoscope 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
@@ -12,12 +26,19 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function Analysis() {
   const { telegramId, loading: authLoading, error: authError } = useTelegramAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [analysisName, setAnalysisName] = useState('');
+  const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -77,7 +98,7 @@ export default function Analysis() {
       toast.error('Выберите файл');
       return;
     }
-    
+
     setIsUploading(true);
     try {
       await uploadMutation.mutateAsync();
@@ -153,9 +174,112 @@ export default function Analysis() {
     );
   }
 
+  // Detail View Component
+  if (selectedAnalysis) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-md mx-auto px-4 py-6">
+          <button 
+            onClick={() => setSelectedAnalysis(null)}
+            className="flex items-center gap-2 text-gray-600 mb-6 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Назад к списку</span>
+          </button>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                selectedAnalysis.file_type === 'pdf' ? 'bg-red-100' : 'bg-blue-100'
+              }`}>
+                {selectedAnalysis.file_type === 'pdf' ? (
+                  <File className="w-6 h-6 text-red-500" />
+                ) : (
+                  <Image className="w-6 h-6 text-blue-500" />
+                )}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">{selectedAnalysis.analysis_name}</h1>
+                <p className="text-sm text-gray-500">
+                  {format(new Date(selectedAnalysis.created_date), "d MMMM yyyy", { locale: ru })}
+                </p>
+              </div>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full space-y-3">
+              {/* Key Findings */}
+              <AccordionItem value="findings" className="border rounded-xl px-4 border-gray-100 bg-gray-50/50">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3">
+                    <Search className="w-5 h-5 text-blue-500" />
+                    <span className="font-semibold">Основные выводы</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                  {selectedAnalysis.key_findings || "Анализ еще обрабатывается или данных нет."}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Deficiencies */}
+              <AccordionItem value="deficiencies" className="border rounded-xl px-4 border-gray-100 bg-gray-50/50">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3">
+                    <Activity className="w-5 h-5 text-amber-500" />
+                    <span className="font-semibold">Дефициты</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                  {selectedAnalysis.deficiencies || "Дефицитов не обнаружено или анализ еще обрабатывается."}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Supplements */}
+              <AccordionItem value="supplements" className="border rounded-xl px-4 border-gray-100 bg-gray-50/50">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3">
+                    <Pill className="w-5 h-5 text-emerald-500" />
+                    <span className="font-semibold">Рекомендации по БАДам</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                  {selectedAnalysis.supplements_recommendation || "Рекомендаций пока нет."}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Follow-up Tests */}
+              <AccordionItem value="followup" className="border rounded-xl px-4 border-gray-100 bg-gray-50/50">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3">
+                    <Stethoscope className="w-5 h-5 text-rose-500" />
+                    <span className="font-semibold">Что досдать / К кому пойти</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                  {selectedAnalysis.follow_up_tests || "Дополнительных рекомендаций нет."}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <a 
+                href={selectedAnalysis.file_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors"
+              >
+                <ClipboardList className="w-5 h-5" />
+                Открыть оригинал файла
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-md mx-auto px-4 py-6 pb-24">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Link 
@@ -253,7 +377,7 @@ export default function Analysis() {
           <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-700">
             <p className="font-medium mb-1">Как это работает?</p>
-            <p>Загрузите результаты анализов, и бот пришлёт вам расшифровку с рекомендациями по БАДам в чат Telegram.</p>
+            <p>Загрузите результаты анализов, и ИИ проведет глубокий анализ ваших показателей, выявит дефициты и даст рекомендации.</p>
           </div>
         </div>
 
@@ -275,9 +399,10 @@ export default function Analysis() {
                   key={analysis.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                  onClick={() => setSelectedAnalysis(analysis)}
+                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform cursor-pointer"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       analysis.file_type === 'pdf' ? 'bg-red-100' : 'bg-blue-100'
                     }`}>
@@ -287,23 +412,14 @@ export default function Analysis() {
                         <Image className="w-5 h-5 text-blue-500" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{analysis.analysis_name}</p>
-                      <p className="text-sm text-gray-500">
-                        {format(new Date(analysis.created_date), "d MMMM yyyy, HH:mm", { locale: ru })}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{analysis.analysis_name}</p>
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(analysis.created_date), "d MMMM yyyy", { locale: ru })}
                       </p>
                     </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
-
-                  {analysis.supplements_recommendation && (
-                    <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                      <div className="flex items-center gap-2 text-green-700 mb-1">
-                        <Pill className="w-4 h-4" />
-                        <span className="text-sm font-medium">Рекомендации по БАДам</span>
-                      </div>
-                      <p className="text-sm text-green-600">{analysis.supplements_recommendation}</p>
-                    </div>
-                  )}
                 </motion.div>
               ))}
             </div>
