@@ -108,36 +108,21 @@ const sendFoodAnalysisWebhooks = async (data) => {
     created_date: data.created_date,
     timestamp: new Date().toISOString()
   };
+
+  const urls = [webhookUrl, webhookTestUrl].filter(Boolean);
   
-  // Отправляем на основной webhook
-  if (webhookUrl) {
+  for (const url of urls) {
     try {
-      await fetch(webhookUrl, {
+      await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload)
       });
-      console.log('Food analysis webhook sent to production:', webhookUrl);
+      console.log(`Food analysis webhook sent to: ${url}`);
     } catch (error) {
-      console.error('Error sending production webhook:', error);
-    }
-  }
-  
-  // Отправляем на тестовый webhook
-  if (webhookTestUrl) {
-    try {
-      await fetch(webhookTestUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-      console.log('Food analysis webhook sent to test:', webhookTestUrl);
-    } catch (error) {
-      console.error('Error sending test webhook:', error);
+      console.error(`Error sending food webhook to ${url}:`, error);
     }
   }
 };

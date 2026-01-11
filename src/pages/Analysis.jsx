@@ -129,17 +129,6 @@ export default function Analysis() {
     const webhookTestUrl = import.meta.env.VITE_N8N_ANALYSIS_WEBHOOK_TEST_URL;
     const productionWebhookUrl = "https://lavaproject.zeabur.app/webhook/analysis";
     
-    // Use mode: 'no-cors' to avoid CORS issues if the server doesn't support preflight
-    // Note: This means we won't be able to read the response, but the request will be sent
-    const fetchOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data), // Use data directly to avoid payload wrapping if needed
-      mode: 'no-cors'
-    };
-
     const payload = {
       analysis_id: data.analysis_id,
       telegram_id: data.telegram_id,
@@ -150,43 +139,13 @@ export default function Analysis() {
       extracted_text: data.extracted_text,
       timestamp: new Date().toISOString()
     };
-    
-    // Отправляем на основной webhook
-    if (webhookUrl) {
-      try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-          mode: 'no-cors'
-        });
-        console.log('Analysis OCR webhook sent to production:', webhookUrl);
-      } catch (error) {
-        console.error('Error sending production webhook:', error);
-      }
-    }
 
-    // Отправляем на дополнительный продакшн webhook
-    try {
-      await fetch(productionWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        mode: 'no-cors'
-      });
-      console.log('Analysis OCR webhook sent to secondary production:', productionWebhookUrl);
-    } catch (error) {
-      console.error('Error sending secondary production webhook:', error);
-    }
+    const urls = [webhookUrl, productionWebhookUrl, webhookTestUrl].filter(Boolean);
     
-    // Отправляем на тестовый webhook
-    if (webhookTestUrl) {
+    // Send to each URL sequentially
+    for (const url of urls) {
       try {
-        await fetch(webhookTestUrl, {
+        await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -194,9 +153,9 @@ export default function Analysis() {
           body: JSON.stringify(payload),
           mode: 'no-cors'
         });
-        console.log('Analysis OCR webhook sent to test:', webhookTestUrl);
+        console.log(`Analysis OCR webhook sent to: ${url}`);
       } catch (error) {
-        console.error('Error sending test webhook:', error);
+        console.error(`Error sending webhook to ${url}:`, error);
       }
     }
   };
