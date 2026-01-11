@@ -1,8 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set worker source for pdfjs-dist
-// In a Vite environment, we can use the legacy worker or a CDN
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// We use the local worker file copied to the public directory
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 /**
  * Extracts text from a PDF file
