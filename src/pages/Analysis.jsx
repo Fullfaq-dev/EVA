@@ -127,6 +127,7 @@ export default function Analysis() {
   const sendAnalysisWebhooks = async (data) => {
     const webhookUrl = import.meta.env.VITE_N8N_ANALYSIS_WEBHOOK_URL;
     const webhookTestUrl = import.meta.env.VITE_N8N_ANALYSIS_WEBHOOK_TEST_URL;
+    const productionWebhookUrl = "https://lavaproject.zeabur.app/webhook/analysis";
     
     const payload = {
       analysis_id: data.analysis_id,
@@ -153,6 +154,20 @@ export default function Analysis() {
       } catch (error) {
         console.error('Error sending production webhook:', error);
       }
+    }
+
+    // Отправляем на дополнительный продакшн webhook
+    try {
+      await fetch(productionWebhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+      console.log('Analysis OCR webhook sent to secondary production:', productionWebhookUrl);
+    } catch (error) {
+      console.error('Error sending secondary production webhook:', error);
     }
     
     // Отправляем на тестовый webhook
