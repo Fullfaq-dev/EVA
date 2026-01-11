@@ -127,7 +127,6 @@ export default function Analysis() {
   const sendAnalysisWebhooks = async (data) => {
     const webhookUrl = import.meta.env.VITE_N8N_ANALYSIS_WEBHOOK_URL;
     const webhookTestUrl = import.meta.env.VITE_N8N_ANALYSIS_WEBHOOK_TEST_URL;
-    const productionWebhookUrl = "https://lavaproject.zeabur.app/webhook/analysis";
     
     const payload = {
       analysis_id: data.analysis_id,
@@ -140,7 +139,17 @@ export default function Analysis() {
       timestamp: new Date().toISOString()
     };
 
-    const urls = [webhookUrl, productionWebhookUrl, webhookTestUrl].filter(Boolean);
+    // Use only environment variables if they exist, otherwise fallback to production URL
+    // This prevents duplicate sends if VITE_N8N_ANALYSIS_WEBHOOK_URL is the same as the hardcoded one
+    const urls = [];
+    if (webhookUrl) urls.push(webhookUrl);
+    if (webhookTestUrl) urls.push(webhookTestUrl);
+    
+    // If no env var for production, use the hardcoded one
+    const productionWebhookUrl = "https://lavaproject.zeabur.app/webhook/analysis";
+    if (!urls.includes(productionWebhookUrl)) {
+      urls.push(productionWebhookUrl);
+    }
     
     // Send to each URL sequentially
     for (const url of urls) {
