@@ -129,6 +129,17 @@ export default function Analysis() {
     const webhookTestUrl = import.meta.env.VITE_N8N_ANALYSIS_WEBHOOK_TEST_URL;
     const productionWebhookUrl = "https://lavaproject.zeabur.app/webhook/analysis";
     
+    // Use mode: 'no-cors' to avoid CORS issues if the server doesn't support preflight
+    // Note: This means we won't be able to read the response, but the request will be sent
+    const fetchOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data), // Use data directly to avoid payload wrapping if needed
+      mode: 'no-cors'
+    };
+
     const payload = {
       analysis_id: data.analysis_id,
       telegram_id: data.telegram_id,
@@ -148,7 +159,8 @@ export default function Analysis() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          mode: 'no-cors'
         });
         console.log('Analysis OCR webhook sent to production:', webhookUrl);
       } catch (error) {
@@ -163,7 +175,8 @@ export default function Analysis() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        mode: 'no-cors'
       });
       console.log('Analysis OCR webhook sent to secondary production:', productionWebhookUrl);
     } catch (error) {
@@ -178,7 +191,8 @@ export default function Analysis() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          mode: 'no-cors'
         });
         console.log('Analysis OCR webhook sent to test:', webhookTestUrl);
       } catch (error) {
