@@ -150,8 +150,7 @@ export default function Analysis() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload),
-          mode: 'no-cors'
+          body: JSON.stringify(payload)
         });
         console.log(`Analysis OCR webhook sent to: ${url}`);
       } catch (error) {
