@@ -135,6 +135,31 @@ const sendFoodAnalysisWebhooks = async (data) => {
 // Update Food Entry
 export const updateFoodEntry = async ({ entry_id, calories, protein, fat, carbs, description, photo_url, photo_urls, is_edit_action }) => {
   try {
+    // Если это ручное редактирование пользователем, только отправляем вебхук
+    if (is_edit_action) {
+      // Получаем текущие данные записи для вебхука
+      const { data: currentEntry, error: fetchError } = await supabase
+        .from('food_entries')
+        .select('*')
+        .eq('id', entry_id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+
+      await sendFoodAnalysisWebhooks({
+        entry_id: entry_id,
+        telegram_id: currentEntry.user_telegram_id,
+        description: description !== undefined ? description : currentEntry.description,
+        meal_type: currentEntry.meal_type,
+        photo_url: photo_url !== undefined ? photo_url : currentEntry.photo_url,
+        photo_urls: photo_urls || (photo_url !== undefined ? [photo_url] : (currentEntry.photo_url ? [currentEntry.photo_url] : [])),
+        created_date: currentEntry.created_date,
+        status: 'edited'
+      });
+
+      return { data: { entry: currentEntry } };
+    }
+
     const updateData = {};
     if (calories !== undefined) updateData.calories = calories;
     if (protein !== undefined) updateData.protein = protein;
@@ -151,20 +176,6 @@ export const updateFoodEntry = async ({ entry_id, calories, protein, fat, carbs,
       .single();
     
     if (error) throw error;
-
-    // Если это ручное редактирование пользователем, отправляем вебхук
-    if (is_edit_action) {
-      await sendFoodAnalysisWebhooks({
-        entry_id: entry.id,
-        telegram_id: entry.user_telegram_id,
-        description: entry.description,
-        meal_type: entry.meal_type,
-        photo_url: entry.photo_url,
-        photo_urls: photo_urls || (entry.photo_url ? [entry.photo_url] : []),
-        created_date: entry.created_date,
-        status: 'edited'
-      });
-    }
     
     // Update daily stats
     const today = new Date().toISOString().split('T')[0];
