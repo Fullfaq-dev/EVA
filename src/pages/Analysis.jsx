@@ -178,6 +178,7 @@ export default function Analysis() {
       try {
         await fetch(url, {
           method: 'POST',
+          mode: 'no-cors', // Try to bypass CORS for simple webhooks
           headers: {
             'Content-Type': 'application/json',
           },
