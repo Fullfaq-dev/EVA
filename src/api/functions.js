@@ -56,7 +56,7 @@ export const manageProfile = async ({ action, data }) => {
 };
 
 // Create Food Entry
-export const createFoodEntry = async ({ telegram_id, description, meal_type, photo_url }) => {
+export const createFoodEntry = async ({ telegram_id, description, meal_type, photo_url, photo_urls }) => {
   try {
     const { data: entry, error } = await supabase
       .from('food_entries')
@@ -76,13 +76,15 @@ export const createFoodEntry = async ({ telegram_id, description, meal_type, pho
     if (error) throw error;
     
     // Отправляем вебхуки на n8n для AI анализа
-    if (photo_url) {
+    // Теперь отправляем даже если нет фото, но есть описание
+    if (photo_url || description) {
       await sendFoodAnalysisWebhooks({
         entry_id: entry.id,
         telegram_id,
         description,
         meal_type,
         photo_url,
+        photo_urls: photo_urls || (photo_url ? [photo_url] : []),
         created_date: entry.created_date
       });
     }
@@ -105,6 +107,7 @@ const sendFoodAnalysisWebhooks = async (data) => {
     description: data.description,
     meal_type: data.meal_type,
     photo_url: data.photo_url,
+    photo_urls: data.photo_urls || (data.photo_url ? [data.photo_url] : []),
     created_date: data.created_date,
     timestamp: new Date().toISOString()
   };
