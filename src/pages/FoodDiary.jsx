@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFoodEntries, createFoodEntry, deleteFoodEntry } from '@/api/functions';
+import { getFoodEntries, createFoodEntry, deleteFoodEntry, updateFoodEntry } from '@/api/functions';
 import { UploadFile } from '@/api/integrations';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Send, Image, ArrowLeft, Plus, Utensils, Trash2, ChevronLeft, ChevronRight, Calendar, Edit2 } from 'lucide-react';
@@ -480,34 +480,32 @@ export default function FoodDiary() {
                             {format(new Date(entry.created_date), 'HH:mm')}
                           </p>
                           
-                          {/* Macronutrients */}
-                          {(entry.protein > 0 || entry.fat > 0 || entry.carbs > 0) && (
-                            <div className="flex gap-2 mt-1">
+                          {/* Macronutrients & Calories */}
+                          {(entry.protein > 0 || entry.fat > 0 || entry.carbs > 0 || entry.calories > 0) && (
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                              {entry.calories > 0 && (
+                                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md">
+                                  {entry.calories} ккал
+                                </span>
+                              )}
                               {entry.protein > 0 && (
-                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md">
                                   Б: {parseFloat(entry.protein).toFixed(1)}г
                                 </span>
                               )}
                               {entry.fat > 0 && (
-                                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">
+                                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md">
                                   Ж: {parseFloat(entry.fat).toFixed(1)}г
                                 </span>
                               )}
                               {entry.carbs > 0 && (
-                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-md">
                                   У: {parseFloat(entry.carbs).toFixed(1)}г
                                 </span>
                               )}
                             </div>
                           )}
                         </div>
-                        {entry.calories > 0 && (
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-gray-900">
-                              {entry.calories} ккал
-                            </p>
-                          </div>
-                        )}
                         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => {
