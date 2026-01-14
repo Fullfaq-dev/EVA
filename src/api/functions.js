@@ -109,6 +109,7 @@ const sendFoodAnalysisWebhooks = async (data) => {
     photo_url: data.photo_url,
     photo_urls: data.photo_urls || (data.photo_url ? [data.photo_url] : []),
     created_date: data.created_date,
+    status: data.status || 'new',
     timestamp: new Date().toISOString()
   };
 
@@ -131,21 +132,38 @@ const sendFoodAnalysisWebhooks = async (data) => {
 };
 
 // Update Food Entry
-export const updateFoodEntry = async ({ entry_id, calories, protein, fat, carbs }) => {
+export const updateFoodEntry = async ({ entry_id, calories, protein, fat, carbs, description, photo_url, photo_urls, is_edit_action }) => {
   try {
+    const updateData = {};
+    if (calories !== undefined) updateData.calories = calories;
+    if (protein !== undefined) updateData.protein = protein;
+    if (fat !== undefined) updateData.fat = fat;
+    if (carbs !== undefined) updateData.carbs = carbs;
+    if (description !== undefined) updateData.description = description;
+    if (photo_url !== undefined) updateData.photo_url = photo_url;
+
     const { data: entry, error } = await supabase
       .from('food_entries')
-      .update({
-        calories,
-        protein,
-        fat,
-        carbs
-      })
+      .update(updateData)
       .eq('id', entry_id)
       .select()
       .single();
     
     if (error) throw error;
+
+    // Если это ручное редактирование пользователем, отправляем вебхук
+    if (is_edit_action) {
+      await sendFoodAnalysisWebhooks({
+        entry_id: entry.id,
+        telegram_id: entry.user_telegram_id,
+        description: entry.description,
+        meal_type: entry.meal_type,
+        photo_url: entry.photo_url,
+        photo_urls: photo_urls || (entry.photo_url ? [entry.photo_url] : []),
+        created_date: entry.created_date,
+        status: 'edited'
+      });
+    }
     
     // Update daily stats
     const today = new Date().toISOString().split('T')[0];

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFoodEntries, createFoodEntry, deleteFoodEntry } from '@/api/functions';
 import { UploadFile } from '@/api/integrations';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Send, Image, ArrowLeft, Plus, Utensils, Trash2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Camera, Send, Image, ArrowLeft, Plus, Utensils, Trash2, ChevronLeft, ChevronRight, Calendar, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
@@ -27,6 +27,7 @@ export default function FoodDiary() {
   const [description, setDescription] = useState('');
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [editingEntry, setEditingEntry] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showWeekView, setShowWeekView] = useState(false);
@@ -95,6 +96,39 @@ export default function FoodDiary() {
     }
   });
 
+  const updateEntryMutation = useMutation({
+    mutationFn: async (data) => {
+      let photoUrls = data.existingPhotoUrls || [];
+      
+      if (data.newPhotoFiles && data.newPhotoFiles.length > 0) {
+        for (const file of data.newPhotoFiles) {
+          const result = await UploadFile({ file });
+          photoUrls.push(result.file_url);
+        }
+      }
+      
+      const { data: result } = await updateFoodEntry({
+        entry_id: data.entryId,
+        description: data.description,
+        photo_url: photoUrls[0] || null,
+        photo_urls: photoUrls,
+        is_edit_action: true
+      });
+
+      return result.entry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['foodEntries']);
+      setShowAddModal(false);
+      setEditingEntry(null);
+      setDescription('');
+      setPhotoFiles([]);
+      setPhotoPreviews([]);
+      setSelectedMealType('');
+      toast.success('Запись обновлена!', { icon: '📝' });
+    }
+  });
+
   const deleteEntryMutation = useMutation({
     mutationFn: async (entryId) => {
       return await deleteFoodEntry({ entry_id: entryId });
@@ -143,31 +177,43 @@ export default function FoodDiary() {
   };
 
   const handleSubmit = async () => {
-    if (!description && photoFiles.length === 0) {
+    if (!description && photoFiles.length === 0 && (!editingEntry || !editingEntry.photo_url)) {
       toast.error('Добавьте описание или фото');
       return;
     }
-    if (!selectedMealType) {
-      toast.error('Выберите тип приёма пищи');
-      return;
-    }
-    
-    // Проверка на повторное добавление завтрака/обеда/ужина для текущей даты
-    if (['breakfast', 'lunch', 'dinner'].includes(selectedMealType)) {
-      const alreadyExists = currentEntries.some(e => e.meal_type === selectedMealType);
-      if (alreadyExists) {
-        const mealName = mealTypes.find(m => m.id === selectedMealType)?.label.toLowerCase();
-        toast.error(`Вы уже добавили ${mealName} в этот день`);
-        return;
-      }
-    }
-    
+
     setIsUploading(true);
     try {
-      await createEntryMutation.mutateAsync({
-        description,
-        mealType: selectedMealType
-      });
+      if (editingEntry) {
+        await updateEntryMutation.mutateAsync({
+          entryId: editingEntry.id,
+          description,
+          newPhotoFiles: photoFiles,
+          existingPhotoUrls: editingEntry.photo_url ? [editingEntry.photo_url] : [] // В идеале тут должны быть все старые URL
+        });
+      } else {
+        if (!selectedMealType) {
+          toast.error('Выберите тип приёма пищи');
+          setIsUploading(false);
+          return;
+        }
+        
+        // Проверка на повторное добавление завтрака/обеда/ужина для текущей даты
+        if (['breakfast', 'lunch', 'dinner'].includes(selectedMealType)) {
+          const alreadyExists = currentEntries.some(e => e.meal_type === selectedMealType);
+          if (alreadyExists) {
+            const mealName = mealTypes.find(m => m.id === selectedMealType)?.label.toLowerCase();
+            toast.error(`Вы уже добавили ${mealName} в этот день`);
+            setIsUploading(false);
+            return;
+          }
+        }
+
+        await createEntryMutation.mutateAsync({
+          description,
+          mealType: selectedMealType
+        });
+      }
     } finally {
       setIsUploading(false);
     }
@@ -462,13 +508,27 @@ export default function FoodDiary() {
                             </p>
                           </div>
                         )}
-                        <button
-                          onClick={() => handleDeleteEntry(entry, meal.label)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
-                          title="Удалить запись"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
+                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => {
+                              setEditingEntry(entry);
+                              setSelectedMealType(entry.meal_type);
+                              setDescription(entry.description || '');
+                              setShowAddModal(true);
+                            }}
+                            className="p-2 hover:bg-blue-50 rounded-lg"
+                            title="Редактировать"
+                          >
+                            <Edit2 className="w-4 h-4 text-blue-500" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEntry(entry, meal.label)}
+                            className="p-2 hover:bg-red-50 rounded-lg"
+                            title="Удалить запись"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -486,7 +546,13 @@ export default function FoodDiary() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 z-50 flex items-end"
-              onClick={() => setShowAddModal(false)}
+              onClick={() => {
+                setShowAddModal(false);
+                setEditingEntry(null);
+                setDescription('');
+                setPhotoFiles([]);
+                setPhotoPreviews([]);
+              }}
             >
               <motion.div
                 initial={{ y: '100%' }}
@@ -498,7 +564,7 @@ export default function FoodDiary() {
                 <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6" />
                 
                 <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  Добавить {mealTypes.find(m => m.id === selectedMealType)?.label.toLowerCase()}
+                  {editingEntry ? 'Редактировать' : 'Добавить'} {mealTypes.find(m => m.id === selectedMealType)?.label.toLowerCase()}
                 </h2>
 
                 {/* Photo upload */}
