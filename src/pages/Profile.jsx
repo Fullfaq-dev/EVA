@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { manageProfile } from '@/api/functions';
 import { calculateNutrition } from '@/utils/nutritionCalculator';
+import { Reminder } from '@/api/entities';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Edit2, Save, X } from 'lucide-react';
+import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Edit2, Save, X, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -49,6 +52,14 @@ export default function Profile() {
     enabled: !!telegramId
   });
 
+  const { data: reminders = [] } = useQuery({
+    queryKey: ['reminders', telegramId],
+    queryFn: async () => {
+      if (!telegramId) return [];
+      return Reminder.filter({ user_telegram_id: telegramId });
+    },
+    enabled: !!telegramId
+  });
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
@@ -64,6 +75,25 @@ export default function Profile() {
     }
   });
 
+  const toggleReminderMutation = useMutation({
+    mutationFn: async ({ type, enabled }) => {
+      const existing = reminders.find(r => r.type === type);
+      if (existing) {
+        return Reminder.update(existing.id, { enabled });
+      } else {
+        return Reminder.create({
+          user_telegram_id: telegramId,
+          type,
+          enabled,
+          interval_hours: type === 'water' ? 2 : 4
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['reminders']);
+      toast.success('Настройки уведомлений обновлены');
+    }
+  });
 
   const handleEdit = () => {
     setEditData({
@@ -323,6 +353,54 @@ export default function Profile() {
           <div className="mt-3 bg-blue-50 rounded-xl p-3 text-center">
             <p className="text-2xl font-bold text-blue-600">{profile.water_norm} мл</p>
             <p className="text-xs text-gray-500">норма воды</p>
+          </div>
+        </motion.div>
+
+        {/* Reminders Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-semibold text-gray-900">Напоминания</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-900">Вода</span>
+                <span className="text-xs text-gray-500">Пить воду каждые 2 часа</span>
+              </div>
+              <Switch
+                checked={reminders.find(r => r.type === 'water')?.enabled ?? false}
+                onCheckedChange={(checked) => toggleReminderMutation.mutate({ type: 'water', enabled: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-900">Еда</span>
+                <span className="text-xs text-gray-500">Напоминание сфотографировать еду</span>
+              </div>
+              <Switch
+                checked={reminders.find(r => r.type === 'food_photo')?.enabled ?? false}
+                onCheckedChange={(checked) => toggleReminderMutation.mutate({ type: 'food_photo', enabled: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-900">Зарядка</span>
+                <span className="text-xs text-gray-500">Разминка в течение дня</span>
+              </div>
+              <Switch
+                checked={reminders.find(r => r.type === 'exercise')?.enabled ?? false}
+                onCheckedChange={(checked) => toggleReminderMutation.mutate({ type: 'exercise', enabled: checked })}
+              />
+            </div>
           </div>
         </motion.div>
       </div>

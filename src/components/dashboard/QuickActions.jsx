@@ -30,7 +30,7 @@ export default function QuickActions({ onWaterClick, onExerciseClick }) {
     {
       icon: FileText,
       label: 'Анализы',
-      description: 'Загрузить',
+      description: 'Разбор',
       color: 'rose',
       link: 'Analysis'
     }
