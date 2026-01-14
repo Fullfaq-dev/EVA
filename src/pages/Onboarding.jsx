@@ -7,6 +7,7 @@ import { createPageUrl } from '@/utils';
 import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { toast } from 'sonner';
 
+import NameStep from '@/components/onboarding/NameStep';
 import GenderStep from '@/components/onboarding/GenderStep';
 import MeasurementsStep from '@/components/onboarding/MeasurementsStep';
 import ActivityStep from '@/components/onboarding/ActivityStep';
@@ -20,6 +21,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    full_name: telegramName || '',
     gender: '',
     height: null,
     weight: null,
@@ -28,6 +30,12 @@ export default function Onboarding() {
     goal: '',
     problems: ''
   });
+
+  useEffect(() => {
+    if (telegramName && !formData.full_name) {
+      setFormData(prev => ({ ...prev, full_name: telegramName }));
+    }
+  }, [telegramName]);
   const [calculatedData, setCalculatedData] = useState(null);
 
   const calculateNutritionData = () => {
@@ -35,7 +43,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (step === 3) {
+    if (step === 4) {
       // После шага с целью - рассчитываем
       const nutrition = calculateNutritionData();
       console.log('Calculated nutrition:', nutrition);
@@ -74,7 +82,7 @@ export default function Onboarding() {
       
       const profileData = {
         telegram_id: telegramId,
-        full_name: telegramName || 'Пользователь',
+        full_name: formData.full_name || telegramName || 'Пользователь',
         gender: formData.gender,
         height: parseInt(formData.height),
         weight: parseFloat(formData.weight),
@@ -138,45 +146,51 @@ export default function Onboarding() {
 
   const isStepValid = () => {
     switch (step) {
-      case 0: return formData.gender !== '';
-      case 1: return formData.height > 0 && formData.weight > 0 && formData.age > 0;
-      case 2: return formData.activity_level !== '';
-      case 3: return formData.goal !== '';
-      case 4: return true;
+      case 0: return formData.full_name.trim().length > 0;
+      case 1: return formData.gender !== '';
+      case 2: return formData.height > 0 && formData.weight > 0 && formData.age > 0;
+      case 3: return formData.activity_level !== '';
+      case 4: return formData.goal !== '';
       case 5: return true;
+      case 6: return true;
       default: return false;
     }
   };
 
   const steps = [
-    <GenderStep 
-      key="gender"
-      value={formData.gender} 
-      onChange={(v) => updateFormData('gender', v)} 
+    <NameStep
+      key="name"
+      value={formData.full_name}
+      onChange={(v) => updateFormData('full_name', v)}
     />,
-    <MeasurementsStep 
+    <GenderStep
+      key="gender"
+      value={formData.gender}
+      onChange={(v) => updateFormData('gender', v)}
+    />,
+    <MeasurementsStep
       key="measurements"
       height={formData.height}
       weight={formData.weight}
       age={formData.age}
       onChange={updateFormData}
     />,
-    <ActivityStep 
+    <ActivityStep
       key="activity"
-      value={formData.activity_level} 
-      onChange={(v) => updateFormData('activity_level', v)} 
+      value={formData.activity_level}
+      onChange={(v) => updateFormData('activity_level', v)}
     />,
-    <GoalStep 
+    <GoalStep
       key="goal"
-      value={formData.goal} 
-      onChange={(v) => updateFormData('goal', v)} 
+      value={formData.goal}
+      onChange={(v) => updateFormData('goal', v)}
     />,
-    <ProblemsStep 
+    <ProblemsStep
       key="problems"
-      value={formData.problems} 
-      onChange={(v) => updateFormData('problems', v)} 
+      value={formData.problems}
+      onChange={(v) => updateFormData('problems', v)}
     />,
-    <ResultStep 
+    <ResultStep
       key="result"
       calories={calculatedData?.dailyCalories || 0}
       protein={calculatedData?.dailyProtein || 0}
@@ -212,7 +226,7 @@ export default function Onboarding() {
         {/* Progress bar */}
         <div className="mb-8">
           <div className="flex justify-between mb-2">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
                 className={`h-1.5 flex-1 mx-0.5 rounded-full transition-colors ${
@@ -222,7 +236,7 @@ export default function Onboarding() {
             ))}
           </div>
           <p className="text-sm text-gray-500 text-center">
-            Шаг {step + 1} из 6
+            Шаг {step + 1} из 7
           </p>
         </div>
 
@@ -252,7 +266,7 @@ export default function Onboarding() {
             </Button>
           )}
           
-          {step < 5 ? (
+          {step < 6 ? (
             <Button
               onClick={handleNext}
               disabled={!isStepValid()}
