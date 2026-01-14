@@ -25,8 +25,8 @@ export default function FoodDiary() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState('');
   const [description, setDescription] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFiles, setPhotoFiles] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showWeekView, setShowWeekView] = useState(false);
@@ -64,11 +64,13 @@ export default function FoodDiary() {
 
   const createEntryMutation = useMutation({
     mutationFn: async (data) => {
-      let photoUrl = null;
+      let photoUrls = [];
       
-      if (photoFile) {
-        const result = await UploadFile({ file: photoFile });
-        photoUrl = result.file_url;
+      if (photoFiles.length > 0) {
+        for (const file of photoFiles) {
+          const result = await UploadFile({ file });
+          photoUrls.push(result.file_url);
+        }
       }
       
       // Создаем запись через backend function
@@ -76,7 +78,8 @@ export default function FoodDiary() {
         telegram_id: telegramId,
         description: data.description,
         meal_type: data.mealType,
-        photo_url: photoUrl
+        photo_url: photoUrls[0] || null, // Основное фото для совместимости
+        photo_urls: photoUrls // Все фото для мультизагрузки
       });
 
       return result.entry;
@@ -85,8 +88,8 @@ export default function FoodDiary() {
       queryClient.invalidateQueries(['foodEntries']);
       setShowAddModal(false);
       setDescription('');
-      setPhotoFile(null);
-      setPhotoPreview(null);
+      setPhotoFiles([]);
+      setPhotoPreviews([]);
       setSelectedMealType('');
       toast.success('Запись добавлена! Анализируем...', { icon: '🍽️' });
     }
@@ -113,19 +116,34 @@ export default function FoodDiary() {
   };
 
   const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newFiles = [...photoFiles, ...files].slice(0, 4);
+      setPhotoFiles(newFiles);
+      
+      const newPreviews = [];
+      let loadedCount = 0;
+      
+      newFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews[index] = reader.result;
+          loadedCount++;
+          if (loadedCount === newFiles.length) {
+            setPhotoPreviews(newPreviews);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      if (photoFiles.length + files.length > 4) {
+        toast.warning('Максимум 4 фото');
+      }
     }
   };
 
   const handleSubmit = async () => {
-    if (!description && !photoFile) {
+    if (!description && photoFiles.length === 0) {
       toast.error('Добавьте описание или фото');
       return;
     }
@@ -490,36 +508,62 @@ export default function FoodDiary() {
                     ref={fileInputRef}
                     onChange={handlePhotoChange}
                     accept="image/*"
+                    multiple
                     className="hidden"
                   />
                   
-                  {photoPreview ? (
-                    <div className="relative">
-                      <img 
-                        src={photoPreview} 
-                        alt="" 
-                        className="w-full h-48 object-cover rounded-2xl"
-                      />
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setPhotoFile(null);
-                          setPhotoPreview(null);
-                        }}
-                        className="absolute top-2 right-2"
-                      >
-                        Удалить
-                      </Button>
+                  {photoPreviews.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {photoPreviews.map((preview, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <img
+                            src={preview}
+                            alt=""
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                          <button
+                            onClick={() => {
+                              const newFiles = photoFiles.filter((_, i) => i !== index);
+                              const newPreviews = photoPreviews.filter((_, i) => i !== index);
+                              setPhotoFiles(newFiles);
+                              setPhotoPreviews(newPreviews);
+                            }}
+                            className="absolute top-1 right-1 bg-black/50 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                      {photoPreviews.length < 4 && (
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="aspect-square bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 hover:bg-gray-50 transition-colors"
+                        >
+                          <Plus className="w-6 h-6 text-gray-400" />
+                          <span className="text-[10px] text-gray-500">Еще фото</span>
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-32 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
-                    >
-                      <Camera className="w-8 h-8 text-gray-400" />
-                      <span className="text-sm text-gray-500">Добавить фото еды</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 h-24 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+                      >
+                        <Camera className="w-6 h-6 text-gray-400" />
+                        <span className="text-xs text-gray-500">Добавить фото</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Просто фокусируемся на текстовом поле
+                          document.querySelector('textarea')?.focus();
+                        }}
+                        className="flex-1 h-24 bg-gray-50 rounded-2xl border-2 border-gray-200 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+                      >
+                        <Utensils className="w-6 h-6 text-gray-400" />
+                        <span className="text-xs text-gray-500">Без фото</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -552,7 +596,7 @@ export default function FoodDiary() {
                 {/* Submit button */}
                 <Button
                   onClick={handleSubmit}
-                  disabled={isUploading || (!description && !photoFile)}
+                  disabled={isUploading || (!description && photoFiles.length === 0)}
                   className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 rounded-xl"
                 >
                   {isUploading ? (
