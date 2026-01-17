@@ -8,9 +8,11 @@ export function useTelegramAuth() {
 
     useEffect(() => {
         const verifyAuth = async () => {
-            // Ждём загрузки Telegram WebApp
+            // Ждём загрузки Telegram WebApp (увеличиваем время ожидания до 5 секунд)
             let attempts = 0;
-            while (!window.Telegram?.WebApp && attempts < 20) {
+            const maxAttempts = 50;
+            
+            while (!window.Telegram?.WebApp && attempts < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
             }
@@ -18,22 +20,24 @@ export function useTelegramAuth() {
             try {
                 // Проверяем наличие Telegram WebApp
                 if (!window.Telegram?.WebApp) {
-                    setError('Откройте приложение через Telegram бота');
-                    setLoading(false);
-                    return;
+                    throw new Error('Telegram SDK не загружен. Проверьте интернет-соединение или попробуйте использовать VPN.');
                 }
 
                 const tg = window.Telegram.WebApp;
+                
+                // Сообщаем Telegram, что приложение готово
                 tg.ready();
-                tg.expand();
+                
+                // Раскрываем на всю высоту
+                if (tg.expand) tg.expand();
 
                 // Получаем данные пользователя
                 const user = tg.initDataUnsafe?.user;
                 
                 if (!user || !user.id) {
-                    setError('Не удалось получить данные пользователя из Telegram');
-                    setLoading(false);
-                    return;
+                    // В режиме разработки или если открыто не через бота
+                    console.warn('User data missing from Telegram initDataUnsafe');
+                    throw new Error('Откройте приложение через Telegram бота');
                 }
 
                 // Устанавливаем данные пользователя

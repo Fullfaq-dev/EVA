@@ -22,8 +22,8 @@ export default function QuickActions({ onWaterClick, onExerciseClick }) {
     },
     {
       icon: Activity,
-      label: 'Разминка',
-      description: 'Сделал!',
+      label: 'Тренировка',
+      description: 'Выбрать тип',
       color: 'purple',
       onClick: onExerciseClick
     },

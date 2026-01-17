@@ -14,6 +14,7 @@ import ActivityStep from '@/components/onboarding/ActivityStep';
 import GoalStep from '@/components/onboarding/GoalStep';
 import ProblemsStep from '@/components/onboarding/ProblemsStep';
 import ResultStep from '@/components/onboarding/ResultStep';
+import AllergiesStep from '@/components/onboarding/AllergiesStep';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
 
 export default function Onboarding() {
@@ -28,7 +29,8 @@ export default function Onboarding() {
     age: null,
     activity_level: '',
     goal: '',
-    problems: ''
+    problems: '',
+    allergies: ''
   });
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export default function Onboarding() {
         activity_level: formData.activity_level,
         goal: formData.goal,
         problems: formData.problems || '',
+        allergies: formData.allergies || '',
         daily_calories: Math.round(nutrition.dailyCalories),
         daily_protein: Math.round(nutrition.dailyProtein),
         daily_fat: Math.round(nutrition.dailyFat),
@@ -153,6 +156,7 @@ export default function Onboarding() {
       case 4: return formData.goal !== '';
       case 5: return true;
       case 6: return true;
+      case 7: return true;
       default: return false;
     }
   };
@@ -190,6 +194,11 @@ export default function Onboarding() {
       value={formData.problems}
       onChange={(v) => updateFormData('problems', v)}
     />,
+    <AllergiesStep
+      key="allergies"
+      value={formData.allergies}
+      onChange={(v) => updateFormData('allergies', v)}
+    />,
     <ResultStep
       key="result"
       calories={calculatedData?.dailyCalories || 0}
@@ -226,7 +235,7 @@ export default function Onboarding() {
         {/* Progress bar */}
         <div className="mb-8">
           <div className="flex justify-between mb-2">
-            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
               <div
                 key={i}
                 className={`h-1.5 flex-1 mx-0.5 rounded-full transition-colors ${
@@ -236,7 +245,7 @@ export default function Onboarding() {
             ))}
           </div>
           <p className="text-sm text-gray-500 text-center">
-            Шаг {step + 1} из 7
+            Шаг {step + 1} из 8
           </p>
         </div>
 
@@ -266,7 +275,7 @@ export default function Onboarding() {
             </Button>
           )}
           
-          {step < 6 ? (
+          {step < 7 ? (
             <Button
               onClick={handleNext}
               disabled={!isStepValid()}

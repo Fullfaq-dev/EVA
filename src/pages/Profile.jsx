@@ -4,9 +4,10 @@ import { manageProfile } from '@/api/functions';
 import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { Reminder } from '@/api/entities';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Edit2, Save, X, Bell } from 'lucide-react';
+import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Edit2, Save, X, Bell, Ban, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -102,7 +103,9 @@ export default function Profile() {
       age: profile.age,
       gender: profile.gender,
       goal: profile.goal,
-      activity_level: profile.activity_level
+      activity_level: profile.activity_level,
+      problems: profile.problems,
+      allergies: profile.allergies
     });
     setIsEditing(true);
   };
@@ -319,6 +322,55 @@ export default function Profile() {
                 </Select>
               ) : (
                 <span className="font-medium">{goalLabels[profile.goal]}</span>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Health Info Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6"
+        >
+          <h3 className="font-semibold text-gray-900 mb-4">Здоровье и ограничения</h3>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Ban className="w-4 h-4 text-red-500" />
+                <span className="text-sm font-medium">Аллергии и ограничения</span>
+              </div>
+              {isEditing ? (
+                <Textarea
+                  value={editData.allergies || ''}
+                  onChange={(e) => setEditData({ ...editData, allergies: e.target.value })}
+                  placeholder="Нет ограничений"
+                  className="min-h-[80px] text-sm"
+                />
+              ) : (
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-xl">
+                  {profile.allergies || 'Не указано'}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-gray-600">
+                <MessageSquare className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium">Жалобы и проблемы</span>
+              </div>
+              {isEditing ? (
+                <Textarea
+                  value={editData.problems || ''}
+                  onChange={(e) => setEditData({ ...editData, problems: e.target.value })}
+                  placeholder="Нет жалоб"
+                  className="min-h-[80px] text-sm"
+                />
+              ) : (
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-xl">
+                  {profile.problems || 'Не указано'}
+                </p>
               )}
             </div>
           </div>

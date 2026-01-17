@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 import DailyProgress from '@/components/dashboard/DailyProgress';
 import QuickActions from '@/components/dashboard/QuickActions';
+import WorkoutSelector from '@/components/dashboard/WorkoutSelector';
 import PointsBadge from '@/components/dashboard/PointsBadge';
 import WaterTracker from '@/components/dashboard/WaterTracker';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
@@ -51,6 +52,7 @@ export default function Dashboard() {
         total_carbs: 0,
         water_glasses: 0,
         exercises_done: 0,
+        burned_calories: 0,
         points_earned: 0
       };
     },
@@ -101,14 +103,42 @@ export default function Dashboard() {
     toast.success('+250 мл воды! +5 баллов', { icon: '💧' });
   };
 
+  const handleFullWaterClick = () => {
+    const targetMl = profile?.water_norm || 2000;
+    const glassSize = 250;
+    const targetGlasses = Math.ceil(targetMl / glassSize);
+    const currentGlasses = todayStats?.water_glasses || 0;
+    
+    if (currentGlasses >= targetGlasses) return;
+
+    const remainingGlasses = targetGlasses - currentGlasses;
+    const pointsToAdd = remainingGlasses * 5;
+
+    updateStatsMutation.mutate({
+      water_glasses: targetGlasses,
+      points_earned: (todayStats?.points_earned || 0) + pointsToAdd
+    });
+    updateProfilePointsMutation.mutate(pointsToAdd);
+    toast.success(`Выпита вся норма! +${pointsToAdd} баллов`, { icon: '💧' });
+  };
+
+  const [isWorkoutSelectorOpen, setIsWorkoutSelectorOpen] = useState(false);
+
   const handleExerciseClick = () => {
+    setIsWorkoutSelectorOpen(true);
+  };
+
+  const handleWorkoutSelect = (workoutType) => {
     const newExercises = (todayStats?.exercises_done || 0) + 1;
+    const newBurnedCalories = (todayStats?.burned_calories || 0) + workoutType.calories;
+    
     updateStatsMutation.mutate({
       exercises_done: newExercises,
-      points_earned: (todayStats?.points_earned || 0) + 10
+      burned_calories: newBurnedCalories,
+      points_earned: (todayStats?.points_earned || 0) + workoutType.points
     });
-    updateProfilePointsMutation.mutate(10);
-    toast.success('Разминка выполнена! +10 баллов', { icon: '💪' });
+    updateProfilePointsMutation.mutate(workoutType.points);
+    toast.success(`${workoutType.label} выполнена! +${workoutType.points} баллов`, { icon: '💪' });
   };
 
   // Редирект на онбординг если нет профиля
@@ -184,7 +214,7 @@ export default function Dashboard() {
         >
           <DailyProgress
             current={{
-              calories: todayStats?.total_calories || 0,
+              calories: (todayStats?.total_calories || 0) - (todayStats?.burned_calories || 0),
               protein: todayStats?.total_protein || 0,
               fat: todayStats?.total_fat || 0,
               carbs: todayStats?.total_carbs || 0
@@ -206,8 +236,9 @@ export default function Dashboard() {
           className="mb-5"
         >
           <WaterTracker 
-            glasses={todayStats?.water_glasses || 0} 
-            targetMl={profile.water_norm || 2000} 
+            glasses={todayStats?.water_glasses || 0}
+            targetMl={profile.water_norm || 2000}
+            onFullNormClick={handleFullWaterClick}
           />
         </motion.div>
 
@@ -223,6 +254,12 @@ export default function Dashboard() {
             onExerciseClick={handleExerciseClick}
           />
         </motion.div>
+
+        <WorkoutSelector
+          isOpen={isWorkoutSelectorOpen}
+          onClose={() => setIsWorkoutSelectorOpen(false)}
+          onSelect={handleWorkoutSelect}
+        />
       </div>
     </div>
   );
