@@ -30,6 +30,23 @@ export const manageProfile = async ({ action, data }) => {
           .single();
         
         if (error) throw error;
+
+        // Create default reminders for new user
+        const defaultReminders = [
+          { user_telegram_id: data.telegram_id, type: 'water', enabled: true, interval_hours: 2 },
+          { user_telegram_id: data.telegram_id, type: 'food_photo', enabled: true, interval_hours: 4 },
+          { user_telegram_id: data.telegram_id, type: 'exercise', enabled: true, interval_hours: 24 }
+        ];
+
+        const { error: remindersError } = await supabase
+          .from('reminders')
+          .insert(defaultReminders);
+
+        if (remindersError) {
+          console.error('Error creating default reminders:', remindersError);
+          // We don't throw here to not break the registration if reminders fail
+        }
+
         return { data: { profile } };
       }
       
