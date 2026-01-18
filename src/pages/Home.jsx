@@ -8,7 +8,7 @@ export default function Home() {
       <div className="text-center">
         <div className="w-48 h-48 mx-auto mb-8 flex items-center justify-center">
           <img
-            src="/assets/logo.png"
+            src="/assets/logo.webp"
             alt="EVA Logo"
             className="w-full h-full object-contain"
           />
