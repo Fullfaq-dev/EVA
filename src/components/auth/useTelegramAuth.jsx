@@ -8,11 +8,22 @@ export function useTelegramAuth() {
 
     useEffect(() => {
         const verifyAuth = async () => {
-            // Ждём загрузки Telegram WebApp (увеличиваем время ожидания до 5 секунд)
+            // Ждём загрузки Telegram WebApp (увеличиваем время ожидания до 10 секунд)
             let attempts = 0;
-            const maxAttempts = 50;
+            const maxAttempts = 100;
             
             while (!window.Telegram?.WebApp && attempts < maxAttempts) {
+                // Если скрипт еще не загружен, пробуем пересоздать его (на случай блокировки или сбоя загрузки)
+                if (attempts === 20 || attempts === 50) {
+                    console.warn(`Telegram SDK loading attempt ${attempts}: script not found, retrying...`);
+                    const existingScript = document.querySelector('script[src*="telegram-web-app.js"]');
+                    if (existingScript) {
+                        const newScript = document.createElement('script');
+                        newScript.src = `https://telegram.org/js/telegram-web-app.js?v=${Date.now()}`;
+                        newScript.async = true;
+                        existingScript.parentNode.replaceChild(newScript, existingScript);
+                    }
+                }
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
             }
@@ -20,6 +31,7 @@ export function useTelegramAuth() {
             try {
                 // Проверяем наличие Telegram WebApp
                 if (!window.Telegram?.WebApp) {
+                    console.error('Telegram SDK failed to load after 10 seconds');
                     throw new Error('Telegram SDK не загружен. Проверьте интернет-соединение или попробуйте использовать VPN.');
                 }
 
