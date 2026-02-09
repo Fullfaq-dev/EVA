@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import {
   Accordion,
   AccordionContent,
@@ -37,6 +38,7 @@ import {
 export default function Analysis() {
   const { telegramId, loading: authLoading, error: authError } = useTelegramAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [analysisName, setAnalysisName] = useState('');
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
@@ -99,9 +101,8 @@ export default function Analysis() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['analyses']);
-      setSelectedFiles([]);
-      setAnalysisName('');
-      toast.success('Анализ отправлен на обработку!', { icon: '📊' });
+      setIsUploading(false);
+      setIsSuccess(true);
     }
   });
 
@@ -137,10 +138,16 @@ export default function Analysis() {
     try {
       await uploadMutation.mutateAsync();
     } catch (error) {
-      toast.error(error.message || 'Ошибка при загрузке');
-    } finally {
       setIsUploading(false);
+      toast.error(error.message || 'Ошибка при загрузке');
     }
+  };
+
+  const handleUploadComplete = () => {
+    setIsSuccess(false);
+    setSelectedFiles([]);
+    setAnalysisName('');
+    toast.success('Анализ отправлен на обработку!', { icon: '📊' });
   };
 
   // Отправка вебхуков на n8n для AI анализа медицинских файлов
@@ -315,6 +322,13 @@ export default function Analysis() {
             </div>
           </div>
         </div>
+        
+        <LoadingOverlay
+          isLoading={isUploading}
+          isSuccess={isSuccess}
+          onComplete={handleUploadComplete}
+          message="Загружаем и анализируем..."
+        />
       </div>
     );
   }

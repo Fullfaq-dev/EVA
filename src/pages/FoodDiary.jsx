@@ -12,6 +12,7 @@ import { format, subDays, addDays, startOfWeek, endOfWeek, eachDayOfInterval, is
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 
 const mealTypes = [
   { id: 'breakfast', label: 'Завтрак', emoji: '🌅' },
@@ -29,6 +30,7 @@ export default function FoodDiary() {
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [editingEntry, setEditingEntry] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showWeekView, setShowWeekView] = useState(false);
   const fileInputRef = useRef(null);
@@ -87,12 +89,8 @@ export default function FoodDiary() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['foodEntries']);
-      setShowAddModal(false);
-      setDescription('');
-      setPhotoFiles([]);
-      setPhotoPreviews([]);
-      setSelectedMealType('');
-      toast.success('Запись добавлена! Анализируем...', { icon: '🍽️' });
+      setIsUploading(false);
+      setIsSuccess(true);
     }
   });
 
@@ -119,13 +117,8 @@ export default function FoodDiary() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['foodEntries']);
-      setShowAddModal(false);
-      setEditingEntry(null);
-      setDescription('');
-      setPhotoFiles([]);
-      setPhotoPreviews([]);
-      setSelectedMealType('');
-      toast.success('Запись обновлена!', { icon: '📝' });
+      setIsUploading(false);
+      setIsSuccess(true);
     }
   });
 
@@ -214,9 +207,24 @@ export default function FoodDiary() {
           mealType: selectedMealType
         });
       }
-    } finally {
+    } catch (error) {
       setIsUploading(false);
+      console.error(error);
+      toast.error('Ошибка при сохранении');
     }
+  };
+
+  const handleUploadComplete = () => {
+    setIsSuccess(false);
+    setShowAddModal(false);
+    setEditingEntry(null);
+    setDescription('');
+    setPhotoFiles([]);
+    setPhotoPreviews([]);
+    setSelectedMealType('');
+    toast.success(editingEntry ? 'Запись обновлена!' : 'Запись добавлена! Анализируем...', {
+      icon: editingEntry ? '📝' : '🍽️'
+    });
   };
 
   if (authLoading) {
@@ -234,6 +242,13 @@ export default function FoodDiary() {
           <p className="text-red-500 mb-2">Ошибка авторизации</p>
           <p className="text-gray-600 text-sm">{authError}</p>
         </div>
+        
+        <LoadingOverlay
+          isLoading={isUploading}
+          isSuccess={isSuccess}
+          onComplete={handleUploadComplete}
+          message="Сохраняем запись..."
+        />
       </div>
     );
   }
@@ -687,6 +702,13 @@ export default function FoodDiary() {
           )}
         </AnimatePresence>
       </div>
+      
+      <LoadingOverlay
+        isLoading={isUploading}
+        isSuccess={isSuccess}
+        onComplete={handleUploadComplete}
+        message="Сохраняем запись..."
+      />
     </div>
   );
 }

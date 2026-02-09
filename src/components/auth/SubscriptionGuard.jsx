@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { manageProfile } from '@/api/functions';
 import { useTelegramAuth } from './useTelegramAuth';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { createPageUrl } from '@/utils';
 
 export function SubscriptionGuard({ children }) {
   const { telegramId } = useTelegramAuth();
+  const queryClient = useQueryClient();
   const location = useLocation();
   
   // Allow access to Profile page to pay
@@ -31,12 +32,46 @@ export function SubscriptionGuard({ children }) {
     enabled: !!telegramId
   });
 
-  const handlePayment = (plan) => {
+  const handlePayment = async (plan) => {
     console.log('Processing payment for plan:', plan);
-    toast.success(`Оплата тарифа "${plan.name}"... (тестовый режим)`);
-    // Here we would integrate with a payment provider
-    // For now, we can't really update the subscription state without a backend endpoint for payment success
-    // But in a real app, this would redirect to payment or handle success
+    const toastId = toast.loading(`Оплата тарифа "${plan.name}"...`);
+
+    try {
+      // Calculate new end date
+      const now = new Date();
+      const currentEndDate = profile.subscription_end_date ? new Date(profile.subscription_end_date) : now;
+      // If subscription is already active and not expired, extend from current end date, otherwise from now
+      const startDate = (profile.is_subscription_active && currentEndDate > now) ? currentEndDate : now;
+      
+      const newEndDate = new Date(startDate);
+
+      if (plan.name === '1 Месяц') {
+        newEndDate.setMonth(newEndDate.getMonth() + 1);
+      } else if (plan.name === '3 Месяца') {
+        newEndDate.setMonth(newEndDate.getMonth() + 3);
+      } else if (plan.name === '1 Год') {
+        newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+      }
+
+      await manageProfile({
+        action: 'update',
+        data: {
+          telegram_id: telegramId,
+          is_subscription_active: true,
+          subscription_end_date: newEndDate.toISOString()
+        }
+      });
+
+      await queryClient.invalidateQueries(['profile', telegramId]);
+      
+      toast.dismiss(toastId);
+      toast.success(`Подписка активирована до ${newEndDate.toLocaleDateString()}`);
+      
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.dismiss(toastId);
+      toast.error('Ошибка при активации подписки');
+    }
   };
 
   if (isLoading) {
