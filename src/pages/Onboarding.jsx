@@ -7,6 +7,7 @@ import { createPageUrl } from '@/utils';
 import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { toast } from 'sonner';
 
+import AgreementStep from '@/components/onboarding/AgreementStep';
 import NameStep from '@/components/onboarding/NameStep';
 import GenderStep from '@/components/onboarding/GenderStep';
 import MeasurementsStep from '@/components/onboarding/MeasurementsStep';
@@ -30,7 +31,8 @@ export default function Onboarding() {
     activity_level: '',
     goal: '',
     problems: '',
-    allergies: ''
+    allergies: '',
+    agreement: false
   });
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (step === 4) {
+    if (step === 5) {
       // После шага с целью - рассчитываем
       const nutrition = calculateNutritionData();
       console.log('Calculated nutrition:', nutrition);
@@ -149,19 +151,25 @@ export default function Onboarding() {
 
   const isStepValid = () => {
     switch (step) {
-      case 0: return formData.full_name.trim().length > 0;
-      case 1: return formData.gender !== '';
-      case 2: return formData.height > 0 && formData.weight > 0 && formData.age > 0;
-      case 3: return formData.activity_level !== '';
-      case 4: return formData.goal !== '';
-      case 5: return true;
+      case 0: return formData.agreement;
+      case 1: return formData.full_name.trim().length > 0;
+      case 2: return formData.gender !== '';
+      case 3: return formData.height > 0 && formData.weight > 0 && formData.age > 0;
+      case 4: return formData.activity_level !== '';
+      case 5: return formData.goal !== '';
       case 6: return true;
       case 7: return true;
+      case 8: return true;
       default: return false;
     }
   };
 
   const steps = [
+    <AgreementStep
+      key="agreement"
+      value={formData.agreement}
+      onChange={(v) => updateFormData('agreement', v)}
+    />,
     <NameStep
       key="name"
       value={formData.full_name}
@@ -235,7 +243,7 @@ export default function Onboarding() {
         {/* Progress bar */}
         <div className="mb-8">
           <div className="flex justify-between mb-2">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div
                 key={i}
                 className={`h-1.5 flex-1 mx-0.5 rounded-full transition-colors ${
@@ -245,7 +253,7 @@ export default function Onboarding() {
             ))}
           </div>
           <p className="text-sm text-gray-500 text-center">
-            Шаг {step + 1} из 8
+            Шаг {step + 1} из 9
           </p>
         </div>
 
@@ -263,8 +271,8 @@ export default function Onboarding() {
         </AnimatePresence>
 
         {/* Navigation */}
-        <div className="mt-8 flex gap-3">
-          {step > 0 && (
+        {step > 0 && (
+          <div className="mt-8 flex gap-3">
             <Button
               variant="outline"
               onClick={handleBack}
@@ -273,40 +281,40 @@ export default function Onboarding() {
               <ChevronLeft className="w-5 h-5 mr-1" />
               Назад
             </Button>
-          )}
-          
-          {step < 7 ? (
-            <Button
-              onClick={handleNext}
-              disabled={!isStepValid()}
-              className="flex-1 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600"
-            >
-              Далее
-              <ChevronRight className="w-5 h-5 ml-1" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleComplete}
-              disabled={loading}
-              className="flex-1 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600"
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Сохранение...
-                </span>
-              ) : (
-                <>
-                  <Check className="w-5 h-5 mr-1" />
-                  Начать
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+            
+            {step < 8 ? (
+              <Button
+                onClick={handleNext}
+                disabled={!isStepValid()}
+                className="flex-1 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600"
+              >
+                Далее
+                <ChevronRight className="w-5 h-5 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleComplete}
+                disabled={loading}
+                className="flex-1 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600"
+              >
+                {loading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Сохранение...
+                  </span>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5 mr-1" />
+                    Начать
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

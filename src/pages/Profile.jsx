@@ -4,7 +4,7 @@ import { manageProfile } from '@/api/functions';
 import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { Reminder } from '@/api/entities';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Edit2, Save, X, Bell, Ban, MessageSquare, Crown, Check, CreditCard } from 'lucide-react';
+import { ArrowLeft, User, Ruler, Weight, Calendar, Target, Activity, Edit2, Save, X, Bell, Ban, MessageSquare, Crown, Check, CreditCard, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +23,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import LegalModal from "@/components/LegalModal";
+import { LEGAL_DOCUMENTS } from "@/utils/legalTexts";
 
 const goalLabels = {
   gut_health: 'Здоровье ЖКТ',
@@ -47,7 +49,24 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [currentLegalDoc, setCurrentLegalDoc] = useState(null);
   const queryClient = useQueryClient();
+
+  const openLegalDoc = async (docKey) => {
+    const doc = LEGAL_DOCUMENTS[docKey];
+    if (!doc) return;
+    
+    try {
+      const response = await fetch(doc.path);
+      const text = await response.text();
+      setCurrentLegalDoc({ ...doc, content: text });
+      setLegalModalOpen(true);
+    } catch (error) {
+      console.error('Error loading document:', error);
+      toast.error('Не удалось загрузить документ');
+    }
+  };
 
   const handlePayment = (plan) => {
     console.log('Processing payment for plan:', plan);
@@ -583,7 +602,53 @@ export default function Profile() {
             </div>
           </div>
         </motion.div>
+
+        {/* Legal Documents */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-semibold text-gray-900">Правовая информация</h3>
+          </div>
+          
+          <div className="space-y-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
+              onClick={() => openLegalDoc('userAgreement')}
+            >
+              Пользовательское соглашение
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
+              onClick={() => openLegalDoc('privacyPolicy')}
+            >
+              Политика конфиденциальности
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
+              onClick={() => openLegalDoc('dataProcessing')}
+            >
+              Согласие на обработку данных
+            </Button>
+          </div>
+        </motion.div>
       </div>
+
+      {currentLegalDoc && (
+        <LegalModal
+          isOpen={legalModalOpen}
+          onClose={setLegalModalOpen}
+          title={currentLegalDoc.title}
+          content={currentLegalDoc.content}
+        />
+      )}
     </div>
   );
 }
