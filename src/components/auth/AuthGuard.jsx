@@ -7,6 +7,14 @@ export function AuthGuard({ children }) {
   const { telegramId, telegramName, loading: authLoading, error: authError } = useTelegramAuth();
   const [checking, setChecking] = useState(true);
   const [shouldRedirect, setShouldRedirect] = useState(null);
+  const [minLoadFinished, setMinLoadFinished] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinLoadFinished(true);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const checkUserProfile = async () => {
@@ -73,7 +81,7 @@ export function AuthGuard({ children }) {
   }, [shouldRedirect]);
 
   // Показываем загрузку пока проверяем
-  if (checking || authLoading || shouldRedirect) {
+  if (checking || authLoading || shouldRedirect || !minLoadFinished) {
     return <LoadingScreen />;
   }
 
@@ -83,7 +91,7 @@ export function AuthGuard({ children }) {
     useEffect(() => {
       const interval = setInterval(() => {
         setProgress(prev => (prev < 10 ? prev + 1 : prev));
-      }, 200);
+      }, 500); // Slower animation to match 5s
       return () => clearInterval(interval);
     }, []);
 
@@ -116,7 +124,12 @@ export function AuthGuard({ children }) {
           </div>
           
           <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA nutri bot</h1>
-          <p className="text-emerald-600/60 text-sm font-medium">Загрузка...</p>
+          <p className="text-emerald-600/60 text-sm font-medium mb-2">Загрузка...</p>
+          <p className="text-emerald-600/40 text-xs mb-8">При долгой загрузке попробуйте с VPN</p>
+          
+          <p className="text-emerald-600/30 text-[10px] max-w-[250px] mx-auto leading-tight">
+            Пользуясь приложением, вы соглашаетесь с политикой и обработкой персональных данных
+          </p>
         </div>
       </div>
     );

@@ -1,0 +1,2 @@
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS is_subscription_active BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP WITH TIME ZONE;

@@ -23,9 +23,19 @@ export const manageProfile = async ({ action, data }) => {
       }
       
       case 'create': {
+        // Set 7-day trial for new users
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 7);
+
+        const profileData = {
+          ...data,
+          is_subscription_active: true,
+          subscription_end_date: trialEndDate.toISOString()
+        };
+
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .insert(data)
+          .insert(profileData)
           .select()
           .single();
         

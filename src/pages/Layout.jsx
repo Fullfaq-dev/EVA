@@ -3,9 +3,11 @@ import React, { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import BottomNav from '@/components/navigation/BottomNav';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { SubscriptionGuard } from '@/components/auth/SubscriptionGuard';
 
 export default function Layout({ children, currentPageName }) {
   const showNav = ['Dashboard', 'FoodDiary', 'Stats', 'Profile', 'Analysis', 'Actions'].includes(currentPageName);
+  const isSubscriptionProtected = currentPageName !== 'Onboarding' && currentPageName !== 'Home';
   
   // Подключаем Telegram WebApp SDK
   useEffect(() => {
@@ -52,7 +54,13 @@ export default function Layout({ children, currentPageName }) {
         />
         
         <main className={showNav ? 'pb-20' : ''}>
-          {children}
+          {isSubscriptionProtected ? (
+            <SubscriptionGuard>
+              {children}
+            </SubscriptionGuard>
+          ) : (
+            children
+          )}
         </main>
         
         {showNav && <BottomNav />}
