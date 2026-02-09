@@ -16,8 +16,8 @@ export default function BottomNav() {
   const currentPath = location.pathname.toLowerCase();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 pb-safe z-50">
-      <div className="max-w-md mx-auto flex items-center justify-around py-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 pb-safe z-50">
+      <div className="max-w-md mx-auto flex items-center overflow-x-auto no-scrollbar py-2 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const url = createPageUrl(item.page);
@@ -27,14 +27,14 @@ export default function BottomNav() {
             <Link
               key={item.page}
               to={url}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors ${
-                isActive 
-                  ? 'text-emerald-600' 
+              className={`flex flex-col items-center gap-1 min-w-[80px] px-2 py-2 rounded-xl transition-colors flex-shrink-0 ${
+                isActive
+                  ? 'text-emerald-600'
                   : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-xs font-medium whitespace-nowrap">{item.label}</span>
             </Link>
           );
         })}
