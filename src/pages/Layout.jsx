@@ -5,7 +5,7 @@ import BottomNav from '@/components/navigation/BottomNav';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export default function Layout({ children, currentPageName }) {
-  const showNav = ['Dashboard', 'FoodDiary', 'Stats', 'Profile', 'Analysis'].includes(currentPageName);
+  const showNav = ['Dashboard', 'FoodDiary', 'Stats', 'Profile', 'Analysis', 'Actions'].includes(currentPageName);
   
   // Подключаем Telegram WebApp SDK
   useEffect(() => {
