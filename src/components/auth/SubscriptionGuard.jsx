@@ -16,6 +16,8 @@ export function SubscriptionGuard({ children }) {
   // Allow access to Profile page to pay
   const isProfilePage = location.pathname === '/profile';
 
+  const [showWarning, setShowWarning] = useState(true);
+
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', telegramId],
     queryFn: async () => {
@@ -60,7 +62,6 @@ export function SubscriptionGuard({ children }) {
     : 0;
   
   const isExpiringSoon = !isExpired && daysRemaining <= 3 && daysRemaining >= 0;
-  const [showWarning, setShowWarning] = useState(true);
 
   // If subscription is active and not expired, or if we are on the profile page, allow access
   if ((isSubscriptionActive && !isExpired) || isProfilePage) {

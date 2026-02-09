@@ -85,56 +85,6 @@ export function AuthGuard({ children }) {
     return <LoadingScreen />;
   }
 
-  function LoadingScreen() {
-    const [progress, setProgress] = useState(0);
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setProgress(prev => (prev < 10 ? prev + 1 : prev));
-      }, 500); // Slower animation to match 5s
-      return () => clearInterval(interval);
-    }, []);
-
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-48 h-48 mx-auto mb-8 flex items-center justify-center">
-            <img
-              src="/assets/logo.webp"
-              alt="EVA Logo"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          
-          <div className="flex gap-2 justify-center mb-4">
-            {[...Array(10)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  i < progress
-                    ? 'bg-emerald-500 scale-110 shadow-sm shadow-emerald-200'
-                    : 'bg-emerald-100'
-                }`}
-                style={{
-                  // Имитация формы листика/тарелки через border-radius
-                  borderRadius: '60% 40% 60% 40% / 60% 40% 60% 40%'
-                }}
-              />
-            ))}
-          </div>
-          
-          <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA nutri bot</h1>
-          <p className="text-emerald-600/60 text-sm font-medium mb-2">Загрузка...</p>
-          <p className="text-emerald-600/40 text-xs mb-8">При долгой загрузке попробуйте с VPN</p>
-          
-          <p className="text-emerald-600/30 text-[10px] max-w-[250px] mx-auto leading-tight">
-            Пользуясь приложением, вы соглашаетесь с политикой и обработкой персональных данных
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   if (authError) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white flex items-center justify-center p-4">
@@ -150,4 +100,54 @@ export function AuthGuard({ children }) {
   }
 
   return children;
+}
+
+function LoadingScreen() {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(prev => (prev < 10 ? prev + 1 : prev));
+    }, 500); // Slower animation to match 5s
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-48 h-48 mx-auto mb-8 flex items-center justify-center">
+          <img
+            src="/assets/logo.webp"
+            alt="EVA Logo"
+            className="w-full h-full object-contain"
+          />
+        </div>
+        
+        <div className="flex gap-2 justify-center mb-4">
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={i}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                i < progress
+                  ? 'bg-emerald-500 scale-110 shadow-sm shadow-emerald-200'
+                  : 'bg-emerald-100'
+              }`}
+              style={{
+                // Имитация формы листика/тарелки через border-radius
+                borderRadius: '60% 40% 60% 40% / 60% 40% 60% 40%'
+              }}
+            />
+          ))}
+        </div>
+        
+        <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA nutri bot</h1>
+        <p className="text-emerald-600/60 text-sm font-medium mb-2">Загрузка...</p>
+        <p className="text-emerald-600/40 text-xs mb-8">При долгой загрузке попробуйте с VPN</p>
+        
+        <p className="text-emerald-600/30 text-[10px] max-w-[250px] mx-auto leading-tight">
+          Пользуясь приложением, вы соглашаетесь с политикой и обработкой персональных данных
+        </p>
+      </div>
+    </div>
+  );
 }
