@@ -271,8 +271,8 @@ export default function Onboarding() {
         </AnimatePresence>
 
         {/* Navigation */}
-        {step > 0 && (
-          <div className="mt-8 flex gap-3">
+        <div className="mt-8 flex gap-3">
+          {step > 0 && (
             <Button
               variant="outline"
               onClick={handleBack}
@@ -281,8 +281,9 @@ export default function Onboarding() {
               <ChevronLeft className="w-5 h-5 mr-1" />
               Назад
             </Button>
+          )}
             
-            {step < 8 ? (
+          {step < 8 ? (
               <Button
                 onClick={handleNext}
                 disabled={!isStepValid()}
@@ -314,7 +315,6 @@ export default function Onboarding() {
               </Button>
             )}
           </div>
-        )}
       </div>
     </div>
   );
