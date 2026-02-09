@@ -248,6 +248,8 @@ export default function FoodDiary() {
           isSuccess={isSuccess}
           onComplete={handleUploadComplete}
           message="Сохраняем запись..."
+          successTitle="Запись добавлена!"
+          successMessage={`Данные КБЖУ скоро появятся на этом экране.\nВернитесь на эту страницу позже.`}
         />
       </div>
     );
@@ -708,6 +710,8 @@ export default function FoodDiary() {
         isSuccess={isSuccess}
         onComplete={handleUploadComplete}
         message="Сохраняем запись..."
+        successTitle="Запись добавлена!"
+        successMessage={`Данные КБЖУ скоро появятся на этом экране.\nВернитесь на эту страницу позже.`}
       />
     </div>
   );

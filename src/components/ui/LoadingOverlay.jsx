@@ -3,7 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Check } from 'lucide-react';
 
-export function LoadingOverlay({ isLoading, isSuccess, onComplete, message = "Загрузка данных..." }) {
+export function LoadingOverlay({
+  isLoading,
+  isSuccess,
+  onComplete,
+  message = "Загрузка данных...",
+  successTitle = "Успешно загружено!",
+  successMessage = "Данные сохранены и отправлены на обработку"
+}) {
   const [progress, setProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -45,7 +52,7 @@ export function LoadingOverlay({ isLoading, isSuccess, onComplete, message = "З
       const timer = setTimeout(() => {
         if (onComplete) onComplete();
         setShowSuccess(false); // Reset for next time
-      }, 2000);
+      }, 3000);
 
       return () => clearTimeout(timer);
     }
@@ -113,12 +120,12 @@ export function LoadingOverlay({ isLoading, isSuccess, onComplete, message = "З
             </div>
 
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {showSuccess ? "Успешно загружено!" : message}
+              {showSuccess ? successTitle : message}
             </h3>
             
-            <p className="text-gray-500 text-sm mb-6">
-              {showSuccess 
-                ? "Данные сохранены и отправлены на обработку" 
+            <p className="text-gray-500 text-sm mb-6 whitespace-pre-line">
+              {showSuccess
+                ? successMessage
                 : "Пожалуйста, не закрывайте страницу до завершения загрузки"}
             </p>
 

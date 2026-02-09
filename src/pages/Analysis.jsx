@@ -328,6 +328,8 @@ export default function Analysis() {
           isSuccess={isSuccess}
           onComplete={handleUploadComplete}
           message="Загружаем и анализируем..."
+          successTitle="Анализ отправлен!"
+          successMessage={`Отчет будет отправлен в чат Telegram.\nВернитесь на эту страницу позже.`}
         />
       </div>
     );
