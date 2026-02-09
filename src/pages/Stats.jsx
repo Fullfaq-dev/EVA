@@ -9,6 +9,7 @@ import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
+import Leaderboard from '@/components/dashboard/Leaderboard';
 
 export default function Stats() {
   const { telegramId, loading: authLoading, error: authError } = useTelegramAuth();
@@ -209,13 +210,9 @@ export default function Stats() {
           )}
         </motion.div>
 
-        {/* Comparison hint */}
-        <div className="mt-6 bg-blue-50 rounded-xl p-4 flex gap-3">
-          <Users className="w-5 h-5 text-blue-500 flex-shrink-0" />
-          <div className="text-sm text-blue-700">
-            <p className="font-medium">Сравнение с другими</p>
-            <p>Скоро вы сможете анонимно сравнить свой прогресс с пользователями с похожими целями!</p>
-          </div>
+        {/* Leaderboard */}
+        <div className="mt-6">
+          <Leaderboard />
         </div>
       </div>
     </div>
