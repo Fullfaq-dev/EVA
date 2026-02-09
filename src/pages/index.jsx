@@ -1,5 +1,7 @@
 import Layout from "./Layout.jsx";
 
+import Actions from "./Actions";
+
 import Analysis from "./Analysis";
 
 import Dashboard from "./Dashboard";
@@ -18,6 +20,8 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 
 const PAGES = {
     
+    Actions: Actions,
+
     Analysis: Analysis,
     
     Dashboard: Dashboard,
@@ -62,9 +66,10 @@ function PagesContent() {
             <Routes>
                 
                     <Route path="/" element={<Home />} />
-                
-                
-                <Route path="/analysis" element={<Analysis />} />
+                    
+                    <Route path="/actions" element={<Actions />} />
+    
+                    <Route path="/analysis" element={<Analysis />} />
                 
                 <Route path="/dashboard" element={<Dashboard />} />
                 

@@ -11,8 +11,6 @@ import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 import DailyProgress from '@/components/dashboard/DailyProgress';
-import QuickActions from '@/components/dashboard/QuickActions';
-import WorkoutSelector from '@/components/dashboard/WorkoutSelector';
 import PointsBadge from '@/components/dashboard/PointsBadge';
 import WaterTracker from '@/components/dashboard/WaterTracker';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
@@ -93,16 +91,6 @@ export default function Dashboard() {
     }
   });
 
-  const handleWaterClick = () => {
-    const newGlasses = (todayStats?.water_glasses || 0) + 1;
-    updateStatsMutation.mutate({
-      water_glasses: newGlasses,
-      points_earned: (todayStats?.points_earned || 0) + 5
-    });
-    updateProfilePointsMutation.mutate(5);
-    toast.success('+250 мл воды! +5 баллов', { icon: '💧' });
-  };
-
   const handleFullWaterClick = () => {
     const targetMl = profile?.water_norm || 2000;
     const glassSize = 250;
@@ -120,25 +108,6 @@ export default function Dashboard() {
     });
     updateProfilePointsMutation.mutate(pointsToAdd);
     toast.success(`Выпита вся норма! +${pointsToAdd} баллов`, { icon: '💧' });
-  };
-
-  const [isWorkoutSelectorOpen, setIsWorkoutSelectorOpen] = useState(false);
-
-  const handleExerciseClick = () => {
-    setIsWorkoutSelectorOpen(true);
-  };
-
-  const handleWorkoutSelect = (workoutType) => {
-    const newExercises = (todayStats?.exercises_done || 0) + 1;
-    const newBurnedCalories = (todayStats?.burned_calories || 0) + workoutType.calories;
-    
-    updateStatsMutation.mutate({
-      exercises_done: newExercises,
-      burned_calories: newBurnedCalories,
-      points_earned: (todayStats?.points_earned || 0) + workoutType.points
-    });
-    updateProfilePointsMutation.mutate(workoutType.points);
-    toast.success(`${workoutType.label} выполнена! +${workoutType.points} баллов`, { icon: '💪' });
   };
 
   // Редирект на онбординг если нет профиля
@@ -242,24 +211,6 @@ export default function Dashboard() {
           />
         </motion.div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Быстрые действия</h3>
-          <QuickActions 
-            onWaterClick={handleWaterClick}
-            onExerciseClick={handleExerciseClick}
-          />
-        </motion.div>
-
-        <WorkoutSelector
-          isOpen={isWorkoutSelectorOpen}
-          onClose={() => setIsWorkoutSelectorOpen(false)}
-          onSelect={handleWorkoutSelect}
-        />
       </div>
     </div>
   );

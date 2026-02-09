@@ -7,21 +7,18 @@ const activities = [
     id: 'sedentary',
     icon: Armchair,
     title: 'Низкая активность',
-    description: 'Сидячая работа, минимум движения',
     color: 'blue'
   },
   {
     id: 'moderate',
     icon: PersonStanding,
     title: 'Умеренная активность',
-    description: 'Лёгкие тренировки 1-3 раза в неделю',
     color: 'amber'
   },
   {
     id: 'active',
     icon: Flame,
     title: 'Высокая активность',
-    description: 'Интенсивные тренировки 4+ раз в неделю',
     color: 'emerald'
   }
 ];
@@ -85,7 +82,6 @@ export default function ActivityStep({ value, onChange }) {
                 <p className={`font-medium ${isSelected ? colors.text : 'text-gray-700'}`}>
                   {activity.title}
                 </p>
-                <p className="text-sm text-gray-500">{activity.description}</p>
               </div>
             </motion.button>
           );

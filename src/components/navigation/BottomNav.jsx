@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, BookOpen, BarChart2, User } from 'lucide-react';
+import { Home, BookOpen, BarChart2, User, Zap } from 'lucide-react';
 
 const navItems = [
   { icon: Home, label: 'Главная', page: 'Dashboard' },
+  { icon: Zap, label: 'Действия', page: 'Actions' },
   { icon: BookOpen, label: 'Дневник', page: 'FoodDiary' },
   { icon: BarChart2, label: 'Статистика', page: 'Stats' },
   { icon: User, label: 'Профиль', page: 'Profile' }

@@ -633,7 +633,7 @@ export default function FoodDiary() {
 
                 {/* Description */}
                 <Textarea
-                  placeholder="Опишите, что вы съели..."
+                  placeholder={`Напишите, что вы съели… \nРасчеты будут более точными если добавить граммы`}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="mb-4 min-h-24 resize-none"
