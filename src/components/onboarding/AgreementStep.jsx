@@ -56,11 +56,11 @@ export default function AgreementStep({ value, onChange }) {
           checked={value}
           onCheckedChange={onChange}
         />
-        <Label 
-          htmlFor="terms" 
+        <Label
+          htmlFor="terms"
           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
         >
-          Я согласен с Пользовательским соглашением, Политикой конфиденциальности и даю согласие на обработку персональных данных
+          Я согласен с Публичной офертой и пользовательским соглашением, Политикой конфиденциальности и даю согласие на обработку персональных данных
         </Label>
       </div>
     </div>

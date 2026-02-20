@@ -621,7 +621,7 @@ export default function Profile() {
               className="w-full justify-start text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
               onClick={() => openLegalDoc('userAgreement')}
             >
-              Пользовательское соглашение
+              Публичная оферта и пользовательское соглашение
             </Button>
             <Button
               variant="ghost"

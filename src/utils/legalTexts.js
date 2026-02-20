@@ -1,6 +1,6 @@
 export const LEGAL_DOCUMENTS = {
   userAgreement: {
-    title: "Пользовательское соглашение",
+    title: "Публичная оферта и пользовательское соглашение",
     path: "/legal/user_agreement.html"
   },
   privacyPolicy: {
