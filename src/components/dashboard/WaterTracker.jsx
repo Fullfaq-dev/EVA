@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Droplet } from 'lucide-react';
 
-export default function WaterTracker({ glasses, targetMl, onFullNormClick }) {
+export default function WaterTracker({ glasses, targetMl, onFullNormClick, onAddGlass }) {
   const glassSize = 250; // мл
   const targetGlasses = Math.ceil(targetMl / glassSize);
   const currentMl = glasses * glassSize;
@@ -13,12 +13,24 @@ export default function WaterTracker({ glasses, targetMl, onFullNormClick }) {
     <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-5 border border-blue-100 relative overflow-hidden">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-            <Droplet className="w-5 h-5 text-white" />
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={onAddGlass}
+            disabled={!onAddGlass}
+            className={`w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-md transition-shadow ${
+              onAddGlass ? 'cursor-pointer hover:shadow-lg active:shadow-sm' : 'cursor-default'
+            }`}
+            title="Нажми, чтобы отметить стакан воды"
+          >
+            <Droplet className="w-6 h-6 text-white" />
+          </motion.button>
           <div>
             <p className="font-semibold text-gray-900">Вода</p>
             <p className="text-xs text-gray-500">Норма: {Math.round(targetMl)} мл</p>
+            {onAddGlass && (
+              <p className="text-xs text-blue-400">← нажми капельку (+1 стакан)</p>
+            )}
           </div>
         </div>
         <div className="text-right">

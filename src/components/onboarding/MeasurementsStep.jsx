@@ -21,7 +21,6 @@ export default function MeasurementsStep({ height, weight, age, onChange }) {
           </Label>
           <Input
             type="number"
-            placeholder="170"
             value={height || ''}
             onChange={(e) => onChange('height', Number(e.target.value))}
             className="h-12 text-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
@@ -37,7 +36,6 @@ export default function MeasurementsStep({ height, weight, age, onChange }) {
           </Label>
           <Input
             type="number"
-            placeholder="70"
             value={weight || ''}
             onChange={(e) => onChange('weight', Number(e.target.value))}
             className="h-12 text-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
@@ -53,7 +51,6 @@ export default function MeasurementsStep({ height, weight, age, onChange }) {
           </Label>
           <Input
             type="number"
-            placeholder="30"
             value={age || ''}
             onChange={(e) => onChange('age', Number(e.target.value))}
             className="h-12 text-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"

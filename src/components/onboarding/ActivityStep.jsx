@@ -1,25 +1,35 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Armchair, PersonStanding, Flame } from 'lucide-react';
+import { Armchair, PersonStanding, Flame, Zap } from 'lucide-react';
 
 const activities = [
   {
     id: 'sedentary',
     icon: Armchair,
     title: 'Низкая активность',
+    description: 'Сидячая работа, мало движений в быту.',
     color: 'blue'
   },
   {
     id: 'moderate',
     icon: PersonStanding,
     title: 'Умеренная активность',
+    description: 'Тренировки 1–3 раза в неделю или активные прогулки.',
     color: 'amber'
   },
   {
     id: 'active',
     icon: Flame,
-    title: 'Высокая активность',
+    title: 'Высокая бытовая активность',
+    description: 'Подвижная работа + лёгкие тренировки или спорт 3–5 раз в неделю.',
     color: 'emerald'
+  },
+  {
+    id: 'very_active',
+    icon: Zap,
+    title: 'Очень высокая активность',
+    description: 'Ежедневные интенсивные тренировки или спортивный образ жизни.',
+    color: 'red'
   }
 ];
 
@@ -44,6 +54,13 @@ const colorClasses = {
     text: 'text-emerald-600',
     border: 'border-emerald-500',
     bgLight: 'bg-emerald-50'
+  },
+  red: {
+    bg: 'bg-red-100',
+    bgActive: 'bg-red-500',
+    text: 'text-red-600',
+    border: 'border-red-500',
+    bgLight: 'bg-red-50'
   }
 };
 
@@ -73,7 +90,7 @@ export default function ActivityStep({ value, onChange }) {
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 isSelected ? colors.bgActive : colors.bg
               }`}>
                 <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : colors.text}`} />
@@ -81,6 +98,9 @@ export default function ActivityStep({ value, onChange }) {
               <div className="text-left">
                 <p className={`font-medium ${isSelected ? colors.text : 'text-gray-700'}`}>
                   {activity.title}
+                </p>
+                <p className={`text-xs mt-0.5 ${isSelected ? colors.text : 'text-gray-400'}`}>
+                  {activity.description}
                 </p>
               </div>
             </motion.button>

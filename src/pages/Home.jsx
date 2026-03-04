@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center">
-        <div className="w-48 h-48 mx-auto mb-8 flex items-center justify-center">
+        <div className="w-72 h-72 mx-auto mb-8 flex items-center justify-center">
           <img
             src="/assets/logo.webp"
             alt="EVA Logo"
@@ -26,7 +26,7 @@ export default function Home() {
           ))}
         </div>
         
-        <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA nutri bot</h1>
+        <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA NutriBot</h1>
         <p className="text-emerald-600/60 text-sm font-medium">Загрузка...</p>
       </div>
     </div>

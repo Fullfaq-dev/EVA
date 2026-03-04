@@ -91,6 +91,25 @@ export default function Dashboard() {
     }
   });
 
+  const handleAddGlass = () => {
+    const targetMl = profile?.water_norm || 2000;
+    const glassSize = 250;
+    const targetGlasses = Math.ceil(targetMl / glassSize);
+    const currentGlasses = todayStats?.water_glasses || 0;
+
+    if (currentGlasses >= targetGlasses) {
+      toast.info('Дневная норма воды уже выполнена!', { icon: '💧' });
+      return;
+    }
+
+    updateStatsMutation.mutate({
+      water_glasses: currentGlasses + 1,
+      points_earned: (todayStats?.points_earned || 0) + 5
+    });
+    updateProfilePointsMutation.mutate(5);
+    toast.success(`+1 стакан воды! +5 баллов`, { icon: '💧' });
+  };
+
   const handleFullWaterClick = () => {
     const targetMl = profile?.water_norm || 2000;
     const glassSize = 250;
@@ -204,9 +223,10 @@ export default function Dashboard() {
           transition={{ delay: 0.2 }}
           className="mb-5"
         >
-          <WaterTracker 
+          <WaterTracker
             glasses={todayStats?.water_glasses || 0}
             targetMl={profile.water_norm || 2000}
+            onAddGlass={handleAddGlass}
             onFullNormClick={handleFullWaterClick}
           />
         </motion.div>

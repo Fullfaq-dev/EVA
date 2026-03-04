@@ -5,7 +5,7 @@
  * @param {number} params.height - Рост в см
  * @param {number} params.weight - Вес в кг
  * @param {number} params.age - Возраст в годах
- * @param {string} params.activity_level - 'sedentary', 'moderate', 'active'
+ * @param {string} params.activity_level - 'sedentary', 'moderate', 'active', 'very_active'
  * @param {string} params.goal - 'gut_health', 'weight_loss', 'muscle_gain', 'maintenance'
  * @returns {object} Рассчитанные значения калорий, БЖУ и воды
  */
@@ -48,9 +48,10 @@ export function calculateNutrition({ gender, height, weight, age, activity_level
   
   // 4️⃣ Activity → TDEE → Calories
   const activityMultipliers = {
-    sedentary: 1.2,    // Малоподвижный образ жизни
-    moderate: 1.375,   // Умеренная активность (3-5 раз в неделю)
-    active: 1.55       // Высокая активность (6-7 раз в неделю)
+    sedentary: 1.2,      // Низкая: сидячая работа, мало движений в быту
+    moderate: 1.375,     // Умеренная: тренировки 1-3 раза в неделю или активные прогулки
+    active: 1.55,        // Высокая бытовая: подвижная работа + тренировки 3-5 раз в неделю
+    very_active: 1.725   // Очень высокая: ежедневные интенсивные тренировки
   };
   
   const tdee = bmr * activityMultipliers[activity_level];
@@ -136,7 +137,8 @@ export function calculateNutrition({ gender, height, weight, age, activity_level
   
   // Норма воды: базовая формула 30 мл на кг веса
   let waterNorm = weight * 30;
-  if (activity_level === 'active') waterNorm *= 1.3;
+  if (activity_level === 'very_active') waterNorm *= 1.5;
+  else if (activity_level === 'active') waterNorm *= 1.3;
   else if (activity_level === 'moderate') waterNorm *= 1.15;
   
   return {

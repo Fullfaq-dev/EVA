@@ -36,7 +36,8 @@ const goalLabels = {
 const activityLabels = {
   sedentary: 'Низкая',
   moderate: 'Умеренная',
-  active: 'Высокая'
+  active: 'Высокая бытовая',
+  very_active: 'Очень высокая'
 };
 
 const genderLabels = {
@@ -439,7 +440,8 @@ export default function Profile() {
                   <SelectContent>
                     <SelectItem value="sedentary">Низкая</SelectItem>
                     <SelectItem value="moderate">Умеренная</SelectItem>
-                    <SelectItem value="active">Высокая</SelectItem>
+                    <SelectItem value="active">Высокая бытовая</SelectItem>
+                    <SelectItem value="very_active">Очень высокая</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
