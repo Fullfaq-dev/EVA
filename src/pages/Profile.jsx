@@ -294,7 +294,7 @@ export default function Profile() {
                   <div className="grid gap-4 md:grid-cols-3">
                     {/* 1 Month */}
                     <div className="relative rounded-xl border-2 border-gray-100 p-4 hover:border-violet-500 transition-colors cursor-pointer"
-                         onClick={() => handlePayment({ name: '1 Месяц', price: 499 })}>
+                         onClick={() => handlePayment({ name: '1 Месяц', price: 10 })}>
                       <div className="text-center">
                         <h4 className="font-semibold text-gray-900">1 Месяц</h4>
                         <div className="mt-2 mb-4">

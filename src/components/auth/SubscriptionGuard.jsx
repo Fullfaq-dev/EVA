@@ -14,7 +14,7 @@ import { createPageUrl } from '@/utils';
 const PLANS = [
   {
     name: '1 Месяц',
-    price: 499,
+    price: 10,
     badge: null,
     badgeColor: null,
     highlight: false,
