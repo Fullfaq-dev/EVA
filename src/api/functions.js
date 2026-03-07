@@ -70,6 +70,27 @@ export const manageProfile = async ({ action, data }) => {
           .single();
         
         if (error) throw error;
+
+        // Fire onboarding_completed bot trigger when the user finishes onboarding.
+        // This instantly sends the personalised summary + trial activation messages.
+        if (updateData.onboarding_completed === true) {
+          try {
+            const triggerUrl = `${window.location.origin}/api/bot-trigger`;
+            const triggerSecret = import.meta.env.VITE_BOT_TRIGGER_SECRET;
+            await fetch(triggerUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(triggerSecret ? { Authorization: `Bearer ${triggerSecret}` } : {}),
+              },
+              body: JSON.stringify({ telegram_id, event: 'onboarding_completed' }),
+            });
+          } catch (triggerErr) {
+            // Non-fatal — onboarding itself already succeeded
+            console.warn('Bot trigger (onboarding_completed) failed:', triggerErr.message);
+          }
+        }
+
         return { data: { profile } };
       }
       

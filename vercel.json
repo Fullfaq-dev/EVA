@@ -8,5 +8,36 @@
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
+  ],
+
+  "crons": [
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/bot-cron",
+      "schedule": "0 19 * * *"
+    }
   ]
 }

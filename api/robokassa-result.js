@@ -167,6 +167,33 @@ export default async function handler(req, res) {
 
   console.log(`[robokassa-result] ✅ Subscription activated: ${telegramId} → ${newEnd.toISOString()}`);
 
+  // ── Fire bot funnel trigger ──────────────────────────────────────────────
+  // Determine if this is a first-time purchase (subscription_paid)
+  // or a renewal (subscription_renewed), then notify the bot funnel system.
+  const botTriggerUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}/api/bot-trigger`
+    : null;
+  const botTriggerSecret = process.env.BOT_TRIGGER_SECRET;
+
+  if (botTriggerUrl && botTriggerSecret) {
+    const wasAlreadyActive = profile?.is_subscription_active;
+    const botEvent = wasAlreadyActive ? 'subscription_renewed' : 'subscription_paid';
+    try {
+      await fetch(botTriggerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${botTriggerSecret}`,
+        },
+        body: JSON.stringify({ telegram_id: telegramId, event: botEvent }),
+      });
+      console.log(`[robokassa-result] Bot trigger fired: ${botEvent} for ${telegramId}`);
+    } catch (triggerErr) {
+      // Non-fatal — don't fail the Robokassa callback if bot trigger fails
+      console.error('[robokassa-result] Bot trigger error:', triggerErr.message);
+    }
+  }
+
   // Robokassa требует ТОЧНЫЙ ответ "OK{InvId}"
   return res.status(200).send(`OK${InvId}`);
 }
