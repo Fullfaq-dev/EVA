@@ -20,7 +20,7 @@ const activities = [
   {
     id: 'active',
     icon: Flame,
-    title: 'Высокая бытовая активность',
+    title: 'Высокая активность',
     description: 'Подвижная работа + лёгкие тренировки или спорт 3–5 раз в неделю.',
     color: 'emerald'
   },

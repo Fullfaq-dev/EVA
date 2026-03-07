@@ -140,7 +140,7 @@ function LoadingScreen() {
           ))}
         </div>
         
-        <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA nutri bot</h1>
+        <h1 className="text-xl font-bold text-emerald-900 mb-1">EVA NutriBot</h1>
         <p className="text-emerald-600/60 text-sm font-medium mb-2">Загрузка...</p>
         <p className="text-emerald-600/40 text-xs mb-8">При долгой загрузке попробуйте с VPN</p>
         
