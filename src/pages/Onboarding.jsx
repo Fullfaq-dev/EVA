@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { manageProfile } from '@/api/functions';
 import { createPageUrl } from '@/utils';
 import { calculateNutrition } from '@/utils/nutritionCalculator';
 import { toast } from 'sonner';
+import { sendGraspilTarget } from '@/utils/graspil';
 
 import AgreementStep from '@/components/onboarding/AgreementStep';
 import NameStep from '@/components/onboarding/NameStep';
@@ -34,6 +35,15 @@ export default function Onboarding() {
     allergies: '',
     agreement: false
   });
+
+  // Fire once when telegramId is resolved — user opened the onboarding form
+  const graspilStartSent = useRef(false);
+  useEffect(() => {
+    if (telegramId && !graspilStartSent.current) {
+      graspilStartSent.current = true;
+      sendGraspilTarget(10756, telegramId);
+    }
+  }, [telegramId]);
 
   useEffect(() => {
     if (telegramName && !formData.full_name) {
@@ -125,7 +135,10 @@ export default function Onboarding() {
       
       console.log('Save result:', result);
       toast.success('Профиль успешно сохранён!');
-      
+
+      // Track onboarding completion in Graspil (fire-and-forget)
+      sendGraspilTarget(10757, telegramId);
+
       setTimeout(() => {
         window.location.href = createPageUrl('Dashboard');
       }, 500);
