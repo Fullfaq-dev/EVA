@@ -182,6 +182,22 @@ serve(async (req) => {
     `[robokassa-result] Subscription activated for ${telegramId} until ${newEndDate.toISOString()}`
   );
 
+  // ── Graspil: track successful payment (target 10758) ──────────────────────
+  try {
+    const graspilRes = await fetch('https://api.graspil.com/v1/send-target', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Api-Key': '69a7054fa6660:2bef5cf6d28a76382b453114ab3de8259050f80445215ef50aecf48a9aaca0d6',
+      },
+      body: JSON.stringify({ target_id: 10758, user_id: Number(telegramId) }),
+    });
+    const graspilBody = await graspilRes.text();
+    console.log(`[robokassa-result] Graspil target 10758 → status=${graspilRes.status} body=${graspilBody}`);
+  } catch (graspilErr) {
+    console.error('[robokassa-result] Graspil error:', graspilErr.message);
+  }
+
   // Robokassa requires EXACTLY "OK{InvId}" in the response body
   return new Response(`OK${invId}`, { status: 200 });
 });
