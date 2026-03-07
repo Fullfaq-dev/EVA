@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
   const payload = {
     target_id: Number(target_id),
-    user_id: String(user_id),
+    user_id: Number(user_id),
   };
 
   console.log('[graspil-target] Sending to Graspil:', JSON.stringify(payload));
