@@ -43,10 +43,13 @@ export default async function handler(req, res) {
   const text = update?.message?.text || '';
   if (!text.startsWith('/start')) return;
 
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseKey) {
-    console.error('[bot-webhook] Missing Supabase env vars');
+    console.error('[bot-webhook] Missing Supabase env vars', {
+      supabaseUrl: !!supabaseUrl,
+      supabaseKey: !!supabaseKey,
+    });
     return;
   }
 
