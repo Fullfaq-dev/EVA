@@ -67,7 +67,6 @@ function buildMarkup(msg, appUrl) {
   if (!msg.has_button || !msg.button_text) return undefined;
 
   const callbackActions = ['show_meal_plan', 'enable_water_reminders', 'continue'];
-
   if (callbackActions.includes(msg.button_action)) {
     return {
       inline_keyboard: [[{ text: msg.button_text, callback_data: msg.button_action }]],
@@ -81,10 +80,15 @@ function buildMarkup(msg, appUrl) {
     restore_access: `${appUrl}?startapp=subscribe`,
   };
 
-  const url = urlMap[msg.button_action] || appUrl;
-  return {
-    inline_keyboard: [[{ text: msg.button_text, web_app: { url } }]],
-  };
+  const targetUrl = urlMap[msg.button_action] || appUrl;
+
+  // web_app buttons require a direct HTTPS URL (not t.me links).
+  const isTgLink = targetUrl.startsWith('https://t.me') || targetUrl.startsWith('http://t.me');
+  const buttonObj = isTgLink
+    ? { text: msg.button_text, url: targetUrl }
+    : { text: msg.button_text, web_app: { url: targetUrl } };
+
+  return { inline_keyboard: [[buttonObj]] };
 }
 
 async function sendTelegramMessage(telegramId, text, msgTemplate, appUrl, token) {
