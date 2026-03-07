@@ -126,10 +126,16 @@ export default function Onboarding() {
           data: profileData
         });
       } else {
-        console.log('Creating new profile...');
+        console.log('Creating new profile with 7-day premium trial...');
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 7);
         result = await manageProfile({
           action: 'create',
-          data: profileData
+          data: {
+            ...profileData,
+            is_subscription_active: true,
+            subscription_end_date: trialEndDate.toISOString()
+          }
         });
       }
       
