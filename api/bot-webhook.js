@@ -1,12 +1,12 @@
 /**
- * Vercel Serverless Function — Telegram Bot Webhook (minimal)
+ * Vercel Serverless Function — Telegram Bot Webhook
  *
- * Only responsibility: when a user sends /start, enroll them in the
- * 'active' sales funnel (creates a user_funnel_state row).
- * The hourly cron (api/bot-cron.js) then takes over and sends all
- * scheduled funnel messages automatically.
+ * Responsibilities:
+ *   1. Forward ALL Telegram updates to n8n (AI responses, food analysis, etc.)
+ *   2. On /start: enroll user in the 'active' sales funnel (user_funnel_state row)
+ *      so the hourly cron (api/bot-cron.js) can send scheduled funnel messages.
  *
- * All other bot logic (AI responses, food analysis, etc.) lives in n8n.
+ * Both tasks run in parallel — n8n gets every update without delay.
  *
  * Register once via:
  *   curl "https://api.telegram.org/bot<TOKEN>/setWebhook\
@@ -18,30 +18,41 @@
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  *   WEBHOOK_SECRET            — random string set in setWebhook call above
+ *   N8N_TELEGRAM_WEBHOOK_URL  — n8n Telegram Trigger production webhook URL
+ *                               e.g. https://lavaproject.zeabur.app/webhook/<webhookId>
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req, res) {
-  // Only accept POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+/**
+ * Forward the raw Telegram update to n8n's Telegram Trigger webhook.
+ * Fire-and-forget style: errors are logged but never block the response.
+ */
+async function forwardToN8n(update) {
+  const n8nUrl = process.env.N8N_TELEGRAM_WEBHOOK_URL;
+  if (!n8nUrl) {
+    console.warn('[bot-webhook] N8N_TELEGRAM_WEBHOOK_URL not set — skipping forward');
+    return;
   }
-
-  // Validate Telegram webhook secret token
-  const secret = process.env.WEBHOOK_SECRET;
-  if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const res = await fetch(n8nUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update),
+    });
+    if (!res.ok) {
+      console.error(`[bot-webhook] n8n forward failed: ${res.status} ${res.statusText}`);
+    }
+  } catch (err) {
+    console.error('[bot-webhook] n8n forward error:', err.message);
   }
+}
 
-  const update = req.body;
-
-  // Only care about /start messages — respond 200 quickly for everything else
-  const text = update?.message?.text || '';
-  if (!text.startsWith('/start')) {
-    return res.status(200).json({ ok: true });
-  }
-
+/**
+ * Handle /start: upsert a minimal user_profiles row (satisfies FK constraint),
+ * then enroll the user in the 'active' funnel if not already enrolled.
+ */
+async function handleStart(update) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseKey) {
@@ -49,18 +60,17 @@ export default async function handler(req, res) {
       supabaseUrl: !!supabaseUrl,
       supabaseKey: !!supabaseKey,
     });
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const from = update.message.from;
   const telegramId = String(from.id);
-  // Build a display name from whatever Telegram provides
   const fullName = [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Unknown';
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     // 1. Ensure a user_profiles row exists (FK required by user_funnel_state).
-    //    `ignoreDuplicates: true` leaves an existing completed profile untouched.
+    //    ignoreDuplicates: true — never overwrites a completed onboarding profile.
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert(
@@ -70,10 +80,10 @@ export default async function handler(req, res) {
 
     if (profileError) {
       console.error('[bot-webhook] Profile upsert error:', profileError.message);
-      return res.status(200).json({ ok: true });
+      return;
     }
 
-    // 2. Check if this user already has an active funnel state
+    // 2. Skip if already enrolled in the active funnel
     const { data: existing } = await supabase
       .from('user_funnel_state')
       .select('id')
@@ -83,7 +93,7 @@ export default async function handler(req, res) {
 
     if (existing) {
       console.log(`[bot-webhook] /start — funnel already exists for ${telegramId}`);
-      return res.status(200).json({ ok: true });
+      return;
     }
 
     // 3. Enroll in 'active' funnel at day 1
@@ -101,8 +111,33 @@ export default async function handler(req, res) {
       console.log(`[bot-webhook] ✓ Enrolled ${telegramId} in active funnel`);
     }
   } catch (err) {
-    console.error('[bot-webhook] Error:', err.message);
+    console.error('[bot-webhook] handleStart error:', err.message);
   }
+}
+
+export default async function handler(req, res) {
+  // Only accept POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  // Validate Telegram webhook secret token
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const update = req.body;
+  const text = update?.message?.text || '';
+
+  // Run n8n forwarding and /start funnel logic in parallel.
+  // forwardToN8n always runs; handleStart only for /start.
+  const tasks = [forwardToN8n(update)];
+  if (text.startsWith('/start')) {
+    tasks.push(handleStart(update));
+  }
+
+  await Promise.allSettled(tasks);
 
   // Always respond 200 — Telegram requires it
   return res.status(200).json({ ok: true });
