@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     height INTEGER,
     weight DECIMAL(5,2),
     age INTEGER,
-    activity_level TEXT CHECK (activity_level IN ('sedentary', 'moderate', 'active')),
+    activity_level TEXT CHECK (activity_level IN ('sedentary', 'moderate', 'active', 'very_active')),
     goal TEXT CHECK (goal IN ('gut_health', 'weight_loss', 'muscle_gain', 'maintenance')),
     problems TEXT,
     daily_calories INTEGER,
@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     water_norm INTEGER,
     total_points INTEGER DEFAULT 0,
     onboarding_completed BOOLEAN DEFAULT FALSE,
+    is_subscription_active BOOLEAN DEFAULT FALSE,
+    subscription_end_date TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

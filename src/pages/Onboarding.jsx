@@ -121,9 +121,18 @@ export default function Onboarding() {
       let result;
       if (existing.profile) {
         console.log('Updating existing profile...');
+        // Если у существующего профиля ещё не было пробного периода — добавляем
+        const trialData = {};
+        if (!existing.profile.is_subscription_active && !existing.profile.subscription_end_date) {
+          console.log('No trial found on existing profile — assigning 7-day trial...');
+          const trialEndDate = new Date();
+          trialEndDate.setDate(trialEndDate.getDate() + 7);
+          trialData.is_subscription_active = true;
+          trialData.subscription_end_date = trialEndDate.toISOString();
+        }
         result = await manageProfile({
           action: 'update',
-          data: profileData
+          data: { ...profileData, ...trialData }
         });
       } else {
         console.log('Creating new profile with 7-day premium trial...');

@@ -26,6 +26,23 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ─── Telegram Bot API ─────────────────────────────────────────────────────────
+
+/** Answer a callback_query to remove the Telegram loading spinner */
+async function answerCallbackQuery(callbackQueryId, token) {
+  try {
+    await fetch(
+      `https://api.telegram.org/bot${token}/answerCallbackQuery`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId }),
+      }
+    );
+  } catch (err) {
+    console.error('[bot-webhook] answerCallbackQuery error:', err.message);
+  }
+}
+
 async function tgSend(chatId, text, replyMarkup, token) {
   const body = { chat_id: chatId, text, parse_mode: 'HTML' };
   if (replyMarkup) body.reply_markup = replyMarkup;
@@ -235,6 +252,40 @@ export default async function handler(req, res) {
   }
 
   const update = req.body;
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+
+  // ── Handle callback_query (inline button clicks) ──────────────────────────
+  if (update?.callback_query) {
+    const cq = update.callback_query;
+    const callbackData = cq.data;
+    const chatId = cq.message?.chat?.id ?? cq.from?.id;
+
+    // Always answer to remove the loading spinner on the button
+    if (token) await answerCallbackQuery(cq.id, token);
+
+    if (callbackData === 'show_meal_plan') {
+      const simulatedText = 'Собери мне персональный сет: Завтрак, обед, перекус и ужин';
+
+      // Forward to n8n as a synthetic message so the AI processes it
+      const syntheticUpdate = {
+        update_id: update.update_id,
+        message: {
+          message_id: cq.message?.message_id ?? 0,
+          from: cq.from,
+          chat: cq.message?.chat ?? { id: chatId, type: 'private' },
+          date: Math.floor(Date.now() / 1000),
+          text: simulatedText,
+        },
+      };
+      await forwardToN8n(syntheticUpdate);
+      return res.status(200).json({ ok: true });
+    }
+
+    // For any other callback_data — still forward the raw update to n8n
+    await forwardToN8n(update);
+    return res.status(200).json({ ok: true });
+  }
+
   const text = update?.message?.text || '';
 
   // Run n8n forwarding and /start funnel logic in parallel.
