@@ -40,22 +40,26 @@ export default function QuickActions({ onWaterClick, onExerciseClick }) {
     emerald: {
       bg: 'bg-emerald-50',
       icon: 'bg-emerald-500',
-      text: 'text-emerald-700'
+      text: 'text-emerald-700',
+      ping: 'bg-emerald-400'
     },
     blue: {
       bg: 'bg-blue-50',
       icon: 'bg-blue-500',
-      text: 'text-blue-700'
+      text: 'text-blue-700',
+      ping: 'bg-blue-400'
     },
     purple: {
       bg: 'bg-purple-50',
       icon: 'bg-purple-500',
-      text: 'text-purple-700'
+      text: 'text-purple-700',
+      ping: 'bg-purple-400'
     },
     rose: {
       bg: 'bg-rose-50',
       icon: 'bg-rose-500',
-      text: 'text-rose-700'
+      text: 'text-rose-700',
+      ping: 'bg-rose-400'
     }
   };
 
@@ -71,8 +75,11 @@ export default function QuickActions({ onWaterClick, onExerciseClick }) {
             whileTap={{ scale: 0.98 }}
             className={`${colors.bg} rounded-2xl p-4 cursor-pointer transition-shadow hover:shadow-md`}
           >
-            <div className={`w-10 h-10 ${colors.icon} rounded-xl flex items-center justify-center mb-3`}>
-              <Icon className="w-5 h-5 text-white" />
+            <div className="relative w-10 h-10 mb-3">
+              <span className={`absolute inset-0 rounded-xl ${colors.ping} opacity-40 animate-pulse-slow`} />
+              <div className={`relative w-10 h-10 ${colors.icon} rounded-xl flex items-center justify-center`}>
+                <Icon className="w-5 h-5 text-white" />
+              </div>
             </div>
             <p className={`font-semibold ${colors.text}`}>{action.label}</p>
             <p className="text-sm text-gray-500 mt-0.5">{action.description}</p>
