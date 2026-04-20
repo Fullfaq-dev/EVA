@@ -24,17 +24,13 @@ export default function BottomNav() {
           const isActive = currentPath.includes(item.page.toLowerCase());
 
           const iconEl = item.pulse ? (
-            <div className="relative flex items-center justify-center">
-              <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-50 animate-ping" />
-              <span className="absolute inset-[-4px] rounded-full bg-emerald-300 opacity-20 animate-pulse-slow" />
-              <div className={`relative flex items-center justify-center w-8 h-8 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-emerald-400'} shadow-md`}>
-                <Icon className="w-4 h-4 text-white stroke-[2.5]" />
-              </div>
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 shadow-sm">
+              <Icon className="w-4 h-4 text-white stroke-[2.5]" />
             </div>
           ) : (
             <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
           );
-          
+
           return (
             <Link
               key={item.page}
@@ -43,7 +39,7 @@ export default function BottomNav() {
                 isActive
                   ? 'text-emerald-600'
                   : item.pulse
-                  ? 'text-emerald-500 hover:text-emerald-600'
+                  ? 'text-emerald-600 hover:text-emerald-700'
                   : 'text-gray-400 hover:text-gray-600'
               }`}
             >
