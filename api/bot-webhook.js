@@ -91,6 +91,127 @@ function buildMarkup(msg, appUrl) {
   return { inline_keyboard: [[buttonObj]] };
 }
 
+// ─── Reminder helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Upsert a reminder row for a user.
+ * If a row with (user_telegram_id, type) already exists → update it.
+ * Otherwise → insert a new one.
+ */
+async function upsertReminder(telegramId, type, enabled, intervalHours, supabase) {
+  const { data: existing } = await supabase
+    .from('reminders')
+    .select('id')
+    .eq('user_telegram_id', telegramId)
+    .eq('type', type)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from('reminders')
+      .update({
+        enabled,
+        interval_hours: intervalHours,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+  } else {
+    await supabase.from('reminders').insert({
+      user_telegram_id: telegramId,
+      type,
+      enabled,
+      interval_hours: intervalHours,
+    });
+  }
+}
+
+/**
+ * Detect reminder intent from free-form Russian text.
+ * Returns one of: 'enable_water' | 'disable_water' | 'enable_sport' | 'disable_sport' | null
+ */
+function detectReminderIntent(text) {
+  const t = text.toLowerCase();
+
+  // Disable / turn-off patterns take priority
+  const disableMarkers = ['выключ', 'отключ', 'убер', 'не напомина', 'стоп', 'stop'];
+  const isDisable = disableMarkers.some((m) => t.includes(m));
+
+  const waterMarkers = ['вод', 'воды', 'попить', 'выпить'];
+  const sportMarkers = ['спорт', 'трен', 'физ', 'упражн', 'зарядк', 'активн'];
+
+  const hasReminderWord = t.includes('напомин') || t.includes('remind');
+  const hasWater = waterMarkers.some((m) => t.includes(m));
+  const hasSport = sportMarkers.some((m) => t.includes(m));
+
+  if (!hasReminderWord && !hasWater && !hasSport) return null;
+
+  // Must have either reminder word + subject, or explicit subject alone
+  if (hasWater) return isDisable ? 'disable_water' : 'enable_water';
+  if (hasSport) return isDisable ? 'disable_sport' : 'enable_sport';
+
+  return null;
+}
+
+/**
+ * Execute a reminder intent: upsert the DB row and send confirmation.
+ * Guards against missing profile (FK constraint).
+ */
+async function handleReminderAction(intent, chatId, token, supabase) {
+  const telegramId = String(chatId);
+
+  // FK guard — profile must exist
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('telegram_id')
+    .eq('telegram_id', telegramId)
+    .maybeSingle();
+
+  if (!profile) {
+    await tgSend(
+      chatId,
+      '⚠️ Сначала нужно пройти регистрацию в приложении.',
+      null,
+      token
+    );
+    return;
+  }
+
+  switch (intent) {
+    case 'enable_water':
+      await upsertReminder(telegramId, 'water', true, 2, supabase);
+      await tgSend(
+        chatId,
+        '💧 <b>Напоминания о воде включены!</b>\n\nБуду напоминать каждые <b>2 часа</b> выпить стакан воды 🙂',
+        null,
+        token
+      );
+      break;
+
+    case 'disable_water':
+      await upsertReminder(telegramId, 'water', false, 2, supabase);
+      await tgSend(chatId, '💧 Напоминания о воде выключены.', null, token);
+      break;
+
+    case 'enable_sport':
+      await upsertReminder(telegramId, 'exercise', true, 8, supabase);
+      await tgSend(
+        chatId,
+        '🏃 <b>Напоминания о физической активности включены!</b>\n\nБуду напоминать каждые <b>8 часов</b> подвигаться 💪',
+        null,
+        token
+      );
+      break;
+
+    case 'disable_sport':
+      await upsertReminder(telegramId, 'exercise', false, 8, supabase);
+      await tgSend(chatId, '🏃 Напоминания о физической активности выключены.', null, token);
+      break;
+
+    default:
+      break;
+  }
+}
+
 /**
  * Forward the raw Telegram update to n8n's Telegram Trigger webhook.
  * Fire-and-forget style: errors are logged but never block the response.
@@ -254,6 +375,14 @@ export default async function handler(req, res) {
   const update = req.body;
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
+  // ── Supabase client (needed for reminder actions) ─────────────────────────
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase =
+    supabaseUrl && supabaseKey
+      ? createClient(supabaseUrl, supabaseKey)
+      : null;
+
   // ── Handle callback_query (inline button clicks) ──────────────────────────
   if (update?.callback_query) {
     const cq = update.callback_query;
@@ -281,12 +410,38 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ── Reminder callbacks — handled entirely in code, not n8n ──────────────
+    if (callbackData === 'enable_water_reminders') {
+      if (supabase) {
+        await handleReminderAction('enable_water', chatId, token, supabase);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    if (callbackData === 'enable_sport_reminders') {
+      if (supabase) {
+        await handleReminderAction('enable_sport', chatId, token, supabase);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
     // For any other callback_data — still forward the raw update to n8n
     await forwardToN8n(update);
     return res.status(200).json({ ok: true });
   }
 
   const text = update?.message?.text || '';
+
+  // ── Reminder text commands — intercepted before forwarding to n8n ─────────
+  if (text && supabase) {
+    const chatId = update.message?.chat?.id ?? update.message?.from?.id;
+    const intent = detectReminderIntent(text);
+    if (intent && chatId) {
+      await handleReminderAction(intent, chatId, token, supabase);
+      // Do NOT forward reminder activation phrases to n8n — handled fully here
+      return res.status(200).json({ ok: true });
+    }
+  }
 
   // Run n8n forwarding and /start funnel logic in parallel.
   // forwardToN8n always runs; handleStart only for /start.

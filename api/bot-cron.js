@@ -570,6 +570,99 @@ async function processPaidMilestones(supabase, token, appUrl) {
   return totalSent;
 }
 
+// ─── Step 6: Water & exercise reminders ─────────────────────────────────────
+/**
+ * Sends water / exercise reminders to users who have them enabled.
+ * Uses the `reminders` table: each row stores type, enabled, interval_hours,
+ * and updated_at (reset after every send to act as the timer).
+ *
+ * Logic: if NOW() - updated_at  >= interval_hours → send → update updated_at.
+ */
+async function processReminders(supabase, token) {
+  const { data: reminders, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('enabled', true);
+
+  if (error) {
+    console.error('[cron] processReminders fetch error:', error.message);
+    return 0;
+  }
+  if (!reminders?.length) return 0;
+
+  const now = new Date();
+  let sent = 0;
+
+  for (const reminder of reminders) {
+    try {
+      const updatedAt = new Date(reminder.updated_at);
+      const elapsedHours = (now.getTime() - updatedAt.getTime()) / 3_600_000;
+
+      // Not yet due
+      if (elapsedHours < (reminder.interval_hours || 2)) continue;
+
+      // Fetch user profile for personalised data
+      const { data: user } = await supabase
+        .from('user_profiles')
+        .select('full_name, water_norm')
+        .eq('telegram_id', reminder.user_telegram_id)
+        .maybeSingle();
+
+      let text;
+      if (reminder.type === 'water') {
+        const waterL = user?.water_norm
+          ? (user.water_norm / 1000).toFixed(1)
+          : '2.0';
+        text =
+          `💧 <b>Время выпить воды!</b>\n\n` +
+          `Не забывай о своей норме — <b>${waterL} л</b> в день.\n` +
+          `Один стакан прямо сейчас — маленький шаг к большой цели! 🙂`;
+      } else if (reminder.type === 'exercise') {
+        text =
+          `🏃 <b>Время подвигаться!</b>\n\n` +
+          `Даже 5–10 минут лёгкой активности улучшат самочувствие и помогут достичь цели 💪\n` +
+          `Зафиксируй тренировку в приложении!`;
+      } else {
+        // Unknown type — skip
+        continue;
+      }
+
+      const result = await tgCall(
+        'sendMessage',
+        { chat_id: reminder.user_telegram_id, text, parse_mode: 'HTML' },
+        token
+      );
+
+      if (result.ok) {
+        // Reset the interval timer
+        await supabase
+          .from('reminders')
+          .update({ updated_at: now.toISOString() })
+          .eq('id', reminder.id);
+        sent++;
+        console.log(`[cron] ✓ Reminder (${reminder.type}) → ${reminder.user_telegram_id}`);
+      } else {
+        console.error(
+          `[cron] Reminder failed for ${reminder.user_telegram_id}:`,
+          result.description
+        );
+        // Bot was blocked — disable the reminder to avoid repeated errors
+        if (result.error_code === 403) {
+          await supabase
+            .from('reminders')
+            .update({ enabled: false })
+            .eq('id', reminder.id);
+          console.warn(`[cron] Reminder disabled (bot blocked) for ${reminder.user_telegram_id}`);
+        }
+      }
+    } catch (err) {
+      console.error(`[cron] Reminder error for ${reminder.user_telegram_id}:`, err.message);
+    }
+  }
+
+  return sent;
+}
+
 // ─── HTTP handler ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   // Vercel Cron automatically adds the CRON_SECRET as Bearer token
@@ -593,16 +686,21 @@ export default async function handler(req, res) {
   try {
     await advanceDays(supabase);
 
-    const [scheduled, delayed, weekly, milestones] = await Promise.all([
+    const [scheduled, delayed, weekly, milestones, reminders] = await Promise.all([
       processScheduled(supabase, token, appUrl),
       processDelayed(supabase, token, appUrl),
       processWeeklyReport(supabase, token, appUrl),
       processPaidMilestones(supabase, token, appUrl),
+      processReminders(supabase, token),
     ]);
 
-    const total = scheduled + delayed + weekly + milestones;
-    console.log(`[bot-cron] Done. Total sent: ${total} (scheduled:${scheduled} delayed:${delayed} weekly:${weekly} milestones:${milestones})`);
-    return res.status(200).json({ ok: true, scheduled, delayed, weekly, milestones });
+    const total = scheduled + delayed + weekly + milestones + reminders;
+    console.log(
+      `[bot-cron] Done. Total sent: ${total}` +
+      ` (scheduled:${scheduled} delayed:${delayed} weekly:${weekly}` +
+      ` milestones:${milestones} reminders:${reminders})`
+    );
+    return res.status(200).json({ ok: true, scheduled, delayed, weekly, milestones, reminders });
   } catch (err) {
     console.error('[bot-cron] Fatal:', err);
     return res.status(500).json({ error: err.message });
