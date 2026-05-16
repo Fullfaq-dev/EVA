@@ -21,7 +21,12 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { buildMarkup } from './lib/bot-markup.js';
+import {
+  reconcileSleepingHandoffs,
+  shouldSwitchToSleeping,
+  switchActiveToSleeping,
+} from './lib/bot-funnel.js';
+import { sendFunnelMessage } from './lib/bot-send.js';
 
 // ─── Moscow time (UTC+3, Russia has no DST) ──────────────────────────────────
 const MOSCOW_OFFSET_MS = 3 * 3600 * 1000;
@@ -60,10 +65,7 @@ async function tgCall(method, body, token) {
 }
 
 async function sendTelegramMessage(telegramId, text, msgTemplate, appUrl, token) {
-  const params = { chat_id: telegramId, text, parse_mode: 'HTML' };
-  const markup = buildMarkup(msgTemplate, appUrl);
-  if (markup) params.reply_markup = markup;
-  return tgCall('sendMessage', params, token);
+  return sendFunnelMessage(telegramId, text, msgTemplate, appUrl, token);
 }
 
 // ─── Placeholder engine ──────────────────────────────────────────────────────
@@ -238,6 +240,17 @@ async function alreadySentToday(telegramId, msgId, supabase) {
   return (count || 0) > 0;
 }
 
+/** Delay blocks (e.g. 1.1) fire only once per user, not once per calendar day. */
+async function alreadySentEver(telegramId, msgId, supabase) {
+  const { count } = await supabase
+    .from('bot_message_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_telegram_id', telegramId)
+    .eq('funnel_message_id', msgId)
+    .in('delivery_status', ['sent', 'skipped']);
+  return (count || 0) > 0;
+}
+
 // ─── Dispatch a single message row to a user ────────────────────────────────
 async function dispatch(state, user, msg, supabase, token, appUrl) {
   // 1. Dedup
@@ -281,6 +294,10 @@ async function dispatch(state, user, msg, supabase, token, appUrl) {
     .from('user_funnel_state')
     .update({ last_message_sent_at: new Date().toISOString() })
     .eq('id', state.id);
+
+  if (shouldSwitchToSleeping(msg, user, result.ok ? 'sent' : 'failed')) {
+    await switchActiveToSleeping(state.user_telegram_id, state.id, supabase);
+  }
 
   // Brief pause to respect Telegram rate limits
   await new Promise((r) => setTimeout(r, 60));
@@ -397,11 +414,12 @@ async function processDelayed(supabase, token, appUrl) {
   for (const state of states) {
     for (const msg of delayMsgs) {
       if (msg.funnel_type !== state.funnel_type || msg.day_number !== state.current_day) continue;
-      if (await alreadySentToday(state.user_telegram_id, msg.id, supabase)) continue;
+      if (await alreadySentEver(state.user_telegram_id, msg.id, supabase)) continue;
 
-      // Find when the parent block (block_id without '.N' suffix) was sent today
-      const parentBlock = msg.block_id.split('.')[0]; // "1.1" → "1"
-      const today = moscowDateStr();
+      // Parent block sent since funnel start (not only "today" — avoids missing跨 midnight)
+      const parentBlock = msg.block_id.split('.')[0];
+      const since =
+        state.started_at || new Date(Date.now() - 7 * 86400000).toISOString();
 
       const { data: parentLog } = await supabase
         .from('bot_message_log')
@@ -411,7 +429,7 @@ async function processDelayed(supabase, token, appUrl) {
         .eq('day_number', state.current_day)
         .eq('block_id', parentBlock)
         .eq('delivery_status', 'sent')
-        .gte('sent_at', today)
+        .gte('sent_at', since)
         .order('sent_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -652,6 +670,13 @@ export default async function handler(req, res) {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
+    const sleepingReconciled = await reconcileSleepingHandoffs(supabase, (state, user, msg) =>
+      dispatch(state, user, msg, supabase, token, appUrl)
+    );
+    if (sleepingReconciled > 0) {
+      console.log(`[bot-cron] Sleeping handoffs reconciled: ${sleepingReconciled}`);
+    }
+
     await advanceDays(supabase);
 
     const [scheduled, delayed, weekly, milestones, reminders] = await Promise.all([
@@ -665,10 +690,18 @@ export default async function handler(req, res) {
     const total = scheduled + delayed + weekly + milestones + reminders;
     console.log(
       `[bot-cron] Done. Total sent: ${total}` +
-      ` (scheduled:${scheduled} delayed:${delayed} weekly:${weekly}` +
+      ` (sleeping:${sleepingReconciled} scheduled:${scheduled} delayed:${delayed} weekly:${weekly}` +
       ` milestones:${milestones} reminders:${reminders})`
     );
-    return res.status(200).json({ ok: true, scheduled, delayed, weekly, milestones, reminders });
+    return res.status(200).json({
+      ok: true,
+      sleepingReconciled,
+      scheduled,
+      delayed,
+      weekly,
+      milestones,
+      reminders,
+    });
   } catch (err) {
     console.error('[bot-cron] Fatal:', err);
     return res.status(500).json({ error: err.message });
