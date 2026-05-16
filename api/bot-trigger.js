@@ -40,6 +40,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { buildMarkup } from './lib/bot-markup.js';
 
 // ─── Telegram API ─────────────────────────────────────────────────────────────
 async function tgCall(method, body, token) {
@@ -49,32 +50,6 @@ async function tgCall(method, body, token) {
     body: JSON.stringify(body),
   });
   return res.json();
-}
-
-function buildMarkup(msg, appUrl) {
-  if (!msg.has_button || !msg.button_text) return undefined;
-
-  const callbackActions = ['show_meal_plan', 'enable_water_reminders', 'continue'];
-  if (callbackActions.includes(msg.button_action)) {
-    return { inline_keyboard: [[{ text: msg.button_text, callback_data: msg.button_action }]] };
-  }
-
-  const urlMap = {
-    open_onboarding: `${appUrl}?startapp=onboarding`,
-    open_app: appUrl,
-    subscribe: `${appUrl}?startapp=subscribe`,
-    restore_access: `${appUrl}?startapp=subscribe`,
-  };
-
-  const targetUrl = urlMap[msg.button_action] || appUrl;
-
-  // web_app buttons require a direct HTTPS URL (not t.me links).
-  const isTgLink = targetUrl.startsWith('https://t.me') || targetUrl.startsWith('http://t.me');
-  const buttonObj = isTgLink
-    ? { text: msg.button_text, url: targetUrl }
-    : { text: msg.button_text, web_app: { url: targetUrl } };
-
-  return { inline_keyboard: [[buttonObj]] };
 }
 
 // ─── Placeholder fill ─────────────────────────────────────────────────────────
@@ -159,7 +134,7 @@ async function enrollPaidFunnel(telegramId, supabase) {
 }
 
 // ─── Core: fire event messages ────────────────────────────────────────────────
-async function fireEvent(telegramId, eventName, supabase, token, appUrl) {
+export async function fireEvent(telegramId, eventName, supabase, token, appUrl) {
   const state = await getActiveFunnelState(telegramId, supabase);
 
   // For subscription events we don't filter by funnel_type

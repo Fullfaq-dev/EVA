@@ -21,6 +21,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { buildMarkup } from './lib/bot-markup.js';
 
 // ─── Moscow time (UTC+3, Russia has no DST) ──────────────────────────────────
 const MOSCOW_OFFSET_MS = 3 * 3600 * 1000;
@@ -56,39 +57,6 @@ async function tgCall(method, body, token) {
     console.error(`[tg] ${method} failed: ${json.description}`, JSON.stringify(body).slice(0, 200));
   }
   return json;
-}
-
-/**
- * Build Telegram inline_keyboard markup from a bot_funnel_messages row.
- * Button actions that open the Mini App use web_app type;
- * purely callback-driven actions use callback_data.
- */
-function buildMarkup(msg, appUrl) {
-  if (!msg.has_button || !msg.button_text) return undefined;
-
-  const callbackActions = ['show_meal_plan', 'enable_water_reminders', 'continue'];
-  if (callbackActions.includes(msg.button_action)) {
-    return {
-      inline_keyboard: [[{ text: msg.button_text, callback_data: msg.button_action }]],
-    };
-  }
-
-  const urlMap = {
-    open_onboarding: `${appUrl}?startapp=onboarding`,
-    open_app: appUrl,
-    subscribe: `${appUrl}?startapp=subscribe`,
-    restore_access: `${appUrl}?startapp=subscribe`,
-  };
-
-  const targetUrl = urlMap[msg.button_action] || appUrl;
-
-  // web_app buttons require a direct HTTPS URL (not t.me links).
-  const isTgLink = targetUrl.startsWith('https://t.me') || targetUrl.startsWith('http://t.me');
-  const buttonObj = isTgLink
-    ? { text: msg.button_text, url: targetUrl }
-    : { text: msg.button_text, web_app: { url: targetUrl } };
-
-  return { inline_keyboard: [[buttonObj]] };
 }
 
 async function sendTelegramMessage(telegramId, text, msgTemplate, appUrl, token) {

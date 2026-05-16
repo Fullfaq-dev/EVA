@@ -5,6 +5,7 @@
  *   1. Forward ALL Telegram updates to n8n (AI responses, food analysis, etc.)
  *   2. On /start: enroll user in the 'active' sales funnel and immediately
  *      send the Day 1 Block 1 welcome message without waiting for the cron.
+ *   3. In-chat onboarding: questionnaire in Telegram (see api/lib/chat-onboarding.js).
  *
  * Both tasks run in parallel — n8n gets every update without delay.
  *
@@ -24,6 +25,14 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { buildMarkup } from './lib/bot-markup.js';
+import {
+  handleOnboardingCallback,
+  handleOnboardingText,
+  hasActiveSession,
+  isOnboardingCallback,
+  sendOnboardingChoice,
+} from './lib/chat-onboarding.js';
 
 // ─── Telegram Bot API ─────────────────────────────────────────────────────────
 
@@ -60,35 +69,6 @@ async function tgSend(chatId, text, replyMarkup, token) {
     console.error('[bot-webhook] tgSend error:', err.message);
     return { ok: false };
   }
-}
-
-/** Build Telegram inline_keyboard from a bot_funnel_messages row */
-function buildMarkup(msg, appUrl) {
-  if (!msg.has_button || !msg.button_text) return undefined;
-
-  // Callback-only actions
-  const callbackActions = ['show_meal_plan', 'enable_water_reminders', 'continue'];
-  if (callbackActions.includes(msg.button_action)) {
-    return { inline_keyboard: [[{ text: msg.button_text, callback_data: msg.button_action }]] };
-  }
-
-  const urlMap = {
-    open_onboarding: `${appUrl}?startapp=onboarding`,
-    open_app: appUrl,
-    subscribe: `${appUrl}?startapp=subscribe`,
-    restore_access: `${appUrl}?startapp=subscribe`,
-  };
-  const targetUrl = urlMap[msg.button_action] || appUrl;
-
-  // web_app buttons require a direct HTTPS URL (not t.me links).
-  // If the appUrl is a t.me link, fall back to a plain URL button so
-  // Telegram doesn't reject it with BUTTON_URL_INVALID.
-  const isTgLink = targetUrl.startsWith('https://t.me') || targetUrl.startsWith('http://t.me');
-  const buttonObj = isTgLink
-    ? { text: msg.button_text, url: targetUrl }
-    : { text: msg.button_text, web_app: { url: targetUrl } };
-
-  return { inline_keyboard: [[buttonObj]] };
 }
 
 // ─── Reminder helpers ─────────────────────────────────────────────────────────
@@ -162,14 +142,14 @@ async function handleReminderAction(intent, chatId, token, supabase) {
   // FK guard — profile must exist
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('telegram_id')
+    .select('telegram_id, onboarding_completed')
     .eq('telegram_id', telegramId)
     .maybeSingle();
 
-  if (!profile) {
+  if (!profile?.onboarding_completed) {
     await tgSend(
       chatId,
-      '⚠️ Сначала нужно пройти регистрацию в приложении.',
+      '⚠️ Сначала заполните анкету — нажмите «Заполнить анкету» в приветственном сообщении.',
       null,
       token
     );
@@ -383,14 +363,31 @@ export default async function handler(req, res) {
       ? createClient(supabaseUrl, supabaseKey)
       : null;
 
+  const appUrl = process.env.TELEGRAM_APP_URL || 'https://t.me/your_bot';
+
   // ── Handle callback_query (inline button clicks) ──────────────────────────
   if (update?.callback_query) {
     const cq = update.callback_query;
     const callbackData = cq.data;
     const chatId = cq.message?.chat?.id ?? cq.from?.id;
+    const telegramId = String(cq.from?.id);
 
     // Always answer to remove the loading spinner on the button
     if (token) await answerCallbackQuery(cq.id, token);
+
+    // ── Chat / app onboarding choice and flow ───────────────────────────────
+    if (supabase && isOnboardingCallback(callbackData)) {
+      const handled = await handleOnboardingCallback(
+        callbackData,
+        chatId,
+        telegramId,
+        cq.from,
+        supabase,
+        token,
+        appUrl
+      );
+      if (handled) return res.status(200).json({ ok: true });
+    }
 
     if (callbackData === 'show_meal_plan') {
       const simulatedText = 'Собери мне персональный сет: Завтрак, обед, перекус и ужин';
@@ -431,15 +428,47 @@ export default async function handler(req, res) {
   }
 
   const text = update?.message?.text || '';
+  const chatId = update.message?.chat?.id ?? update.message?.from?.id;
+  const telegramId = update.message?.from?.id ? String(update.message.from.id) : null;
+
+  // ── /anketa — повторно показать выбор способа регистрации ─────────────────
+  if (text && supabase && chatId && telegramId && /^\/anketa(@\w+)?$/i.test(text.trim())) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('onboarding_completed')
+      .eq('telegram_id', telegramId)
+      .maybeSingle();
+
+    if (profile?.onboarding_completed) {
+      await tgSend(chatId, '✅ Анкета уже заполнена.', null, token);
+    } else {
+      await sendOnboardingChoice(chatId, token, appUrl);
+    }
+    return res.status(200).json({ ok: true });
+  }
 
   // ── Reminder text commands — intercepted before forwarding to n8n ─────────
-  if (text && supabase) {
-    const chatId = update.message?.chat?.id ?? update.message?.from?.id;
+  if (text && supabase && chatId) {
     const intent = detectReminderIntent(text);
-    if (intent && chatId) {
+    if (intent) {
       await handleReminderAction(intent, chatId, token, supabase);
-      // Do NOT forward reminder activation phrases to n8n — handled fully here
       return res.status(200).json({ ok: true });
+    }
+  }
+
+  // ── In-chat onboarding text answers ───────────────────────────────────────
+  if (text && supabase && chatId && telegramId) {
+    const inSession = await hasActiveSession(telegramId, supabase);
+    if (inSession) {
+      const handled = await handleOnboardingText(
+        text,
+        chatId,
+        telegramId,
+        supabase,
+        token,
+        appUrl
+      );
+      if (handled) return res.status(200).json({ ok: true });
     }
   }
 
