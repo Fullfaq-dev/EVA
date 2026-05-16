@@ -25,7 +25,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { buildMarkup } from './lib/bot-markup.js';
+import { sendFunnelMessage } from './lib/bot-send.js';
 import {
   handleOnboardingCallback,
   handleOnboardingText,
@@ -307,8 +307,7 @@ async function handleStart(update) {
     }
 
     for (const msg of messages) {
-      const markup = buildMarkup(msg, appUrl);
-      const result = await tgSend(telegramId, msg.message_text, markup, token);
+      const result = await sendFunnelMessage(telegramId, msg.message_text, msg, appUrl, token);
 
       // Log delivery in bot_message_log
       await supabase.from('bot_message_log').insert({

@@ -40,7 +40,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { buildMarkup } from './lib/bot-markup.js';
+import { sendFunnelMessage } from './lib/bot-send.js';
 
 // ─── Telegram API ─────────────────────────────────────────────────────────────
 async function tgCall(method, body, token) {
@@ -184,11 +184,7 @@ export async function fireEvent(telegramId, eventName, supabase, token, appUrl) 
     if (count > 0) continue;
 
     const text = fillPlaceholders(msg.message_text, user);
-    const params = { chat_id: telegramId, text, parse_mode: 'HTML' };
-    const markup = buildMarkup(msg, appUrl);
-    if (markup) params.reply_markup = markup;
-
-    const result = await tgCall('sendMessage', params, token);
+    const result = await sendFunnelMessage(telegramId, text, msg, appUrl, token);
 
     await supabase.from('bot_message_log').insert({
       user_telegram_id: telegramId,
