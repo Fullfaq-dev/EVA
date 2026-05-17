@@ -2,7 +2,7 @@
  * Vercel Serverless Function — Telegram Bot Webhook
  *
  * Responsibilities:
- *   1. Forward ALL Telegram updates to n8n (AI responses, food analysis, etc.)
+ *   1. Forward Telegram updates to n8n (чат, еда, вопросы — логика в n8n)
  *   2. On /start: enroll user in the 'active' sales funnel and immediately
  *      send the Day 1 Block 1 welcome message without waiting for the cron.
  *   3. In-chat onboarding: questionnaire in Telegram (see api/lib/chat-onboarding.js).
@@ -20,8 +20,7 @@
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  *   WEBHOOK_SECRET            — random string set in setWebhook call above
- *   N8N_TELEGRAM_WEBHOOK_URL  — n8n Telegram Trigger production webhook URL
- *                               e.g. https://lavaproject.zeabur.app/webhook/<webhookId>
+ *   N8N_TELEGRAM_WEBHOOK_URL  — n8n webhook для Telegram (default: .../webhook/message)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -33,7 +32,6 @@ import {
   isOnboardingCallback,
   sendOnboardingChoice,
 } from './lib/chat-onboarding.js';
-import { handleFoodTextMessage } from './lib/bot-food-chat.js';
 import { fireEvent } from './bot-trigger.js';
 
 // ─── Telegram Bot API ─────────────────────────────────────────────────────────
@@ -199,11 +197,9 @@ async function handleReminderAction(intent, chatId, token, supabase) {
  * Fire-and-forget style: errors are logged but never block the response.
  */
 async function forwardToN8n(update) {
-  const n8nUrl = process.env.N8N_TELEGRAM_WEBHOOK_URL;
-  if (!n8nUrl) {
-    console.warn('[bot-webhook] N8N_TELEGRAM_WEBHOOK_URL not set — skipping forward');
-    return;
-  }
+  const n8nUrl =
+    process.env.N8N_TELEGRAM_WEBHOOK_URL ||
+    'https://lavaproject.zeabur.app/webhook/message';
   try {
     const res = await fetch(n8nUrl, {
       method: 'POST',
@@ -476,18 +472,6 @@ export default async function handler(req, res) {
         appUrl
       );
       if (handled) return res.status(200).json({ ok: true });
-    }
-
-    // ── Текстовое описание еды в чате ─────────────────────────────────────
-    const foodHandled = await handleFoodTextMessage(text, telegramId, supabase);
-    if (foodHandled) {
-      await tgSend(
-        chatId,
-        '🍽 <b>Записала!</b>\n\nСчитаю КБЖУ по вашему описанию — пришлю результат сюда через минуту.',
-        null,
-        token
-      );
-      return res.status(200).json({ ok: true });
     }
   }
 
