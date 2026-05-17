@@ -33,6 +33,8 @@ import {
   isOnboardingCallback,
   sendOnboardingChoice,
 } from './lib/chat-onboarding.js';
+import { handleFoodTextMessage } from './lib/bot-food-chat.js';
+import { fireEvent } from './bot-trigger.js';
 
 // ─── Telegram Bot API ─────────────────────────────────────────────────────────
 
@@ -389,20 +391,26 @@ export default async function handler(req, res) {
     }
 
     if (callbackData === 'show_meal_plan') {
-      const simulatedText = 'Собери мне персональный сет: Завтрак, обед, перекус и ужин';
-
-      // Forward to n8n as a synthetic message so the AI processes it
-      const syntheticUpdate = {
-        update_id: update.update_id,
-        message: {
-          message_id: cq.message?.message_id ?? 0,
-          from: cq.from,
-          chat: cq.message?.chat ?? { id: chatId, type: 'private' },
-          date: Math.floor(Date.now() / 1000),
-          text: simulatedText,
-        },
-      };
-      await forwardToN8n(syntheticUpdate);
+      if (supabase) {
+        const sent = await fireEvent(
+          telegramId,
+          'user_replied_yes_to_meal_plan',
+          supabase,
+          token,
+          appUrl
+        );
+        if (sent > 0) {
+          await new Promise((r) => setTimeout(r, 1200));
+          await fireEvent(telegramId, 'sample_meal_plan_shown', supabase, token, appUrl);
+        } else {
+          await tgSend(
+            chatId,
+            '⚠️ Сначала заполните анкету — тогда смогу показать ваш идеальный день питания.',
+            null,
+            token
+          );
+        }
+      }
       return res.status(200).json({ ok: true });
     }
 
@@ -468,6 +476,18 @@ export default async function handler(req, res) {
         appUrl
       );
       if (handled) return res.status(200).json({ ok: true });
+    }
+
+    // ── Текстовое описание еды в чате ─────────────────────────────────────
+    const foodHandled = await handleFoodTextMessage(text, telegramId, supabase);
+    if (foodHandled) {
+      await tgSend(
+        chatId,
+        '🍽 <b>Записала!</b>\n\nСчитаю КБЖУ по вашему описанию — пришлю результат сюда через минуту.',
+        null,
+        token
+      );
+      return res.status(200).json({ ok: true });
     }
   }
 

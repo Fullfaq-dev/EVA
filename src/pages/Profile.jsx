@@ -11,10 +11,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
+import { SubscriptionCheckout } from '@/components/subscription/SubscriptionCheckout';
+import { fetchHasPaidSubscription, getTrialDaysRemaining } from '@/utils/subscription';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +38,7 @@ const goalLabels = {
 const activityLabels = {
   sedentary: 'Низкая',
   moderate: 'Умеренная',
-  active: 'Высокая бытовая',
+  active: 'Высокая',
   very_active: 'Очень высокая'
 };
 
@@ -47,6 +49,7 @@ const genderLabels = {
 
 export default function Profile() {
   const { telegramId, loading: authLoading, error: authError } = useTelegramAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
@@ -69,12 +72,18 @@ export default function Profile() {
     }
   };
 
-  const handlePayment = (plan) => {
-    console.log('Processing payment for plan:', plan);
-    toast.success(`Оплата тарифа "${plan.name}"... (тестовый режим)`);
-    // Here we would integrate with a payment provider
-    setIsSubscriptionModalOpen(false);
-  };
+  const { data: hasPaid = false } = useQuery({
+    queryKey: ['hasPaid', telegramId],
+    queryFn: () => fetchHasPaidSubscription(telegramId),
+    enabled: !!telegramId,
+  });
+
+  useEffect(() => {
+    if (searchParams.get('pay') === '1') {
+      setIsSubscriptionModalOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', telegramId],
@@ -239,7 +248,7 @@ export default function Profile() {
                   <>
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 w-fit">
                       <Crown className="w-3 h-3 mr-1" />
-                      Premium активен
+                      {hasPaid ? 'Premium активен' : 'Пробный период'}
                     </span>
                     {profile.subscription_end_date && (
                       <span className="text-xs text-gray-500">
@@ -256,94 +265,40 @@ export default function Profile() {
             </div>
           </div>
 
-          {!profile.is_subscription_active && (
+          {!hasPaid && (
             <div className="mb-6 p-4 bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl text-white shadow-lg">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h3 className="font-bold text-lg">FitBot Premium</h3>
-                  <p className="text-violet-100 text-sm">Откройте все возможности</p>
+                  <p className="text-violet-100 text-sm">
+                    {profile.is_subscription_active && profile.subscription_end_date
+                      ? `Пробный период: осталось ${getTrialDaysRemaining(profile.subscription_end_date)} дн.`
+                      : 'Оформите подписку, чтобы сохранить доступ'}
+                  </p>
                 </div>
                 <Crown className="w-6 h-6 text-yellow-300" />
               </div>
-              <ul className="space-y-2 mb-4 text-sm text-violet-50">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-300" />
-                  Персональный план питания
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-300" />
-                  Расширенная аналитика
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-300" />
-                  Безлимитный AI-ассистент
-                </li>
-              </ul>
               <Dialog open={isSubscriptionModalOpen} onOpenChange={setIsSubscriptionModalOpen}>
                 <DialogTrigger asChild>
                   <Button className="w-full bg-white text-violet-600 hover:bg-violet-50 font-semibold">
-                    Оформить подписку
+                    Оплатить подписку
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px]">
+                <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center mb-2">Выберите тариф</DialogTitle>
-                    <DialogDescription className="text-center mb-6">
-                      Инвестируйте в свое здоровье с выгодой
+                    <DialogTitle className="text-xl font-bold text-center">Выберите тариф</DialogTitle>
+                    <DialogDescription className="text-center">
+                      Оплата через Robokassa — подписка активируется автоматически
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {/* 1 Month */}
-                    <div className="relative rounded-xl border-2 border-gray-100 p-4 hover:border-violet-500 transition-colors cursor-pointer"
-                         onClick={() => handlePayment({ name: '1 Месяц', price: 499 })}>
-                      <div className="text-center">
-                        <h4 className="font-semibold text-gray-900">1 Месяц</h4>
-                        <div className="mt-2 mb-4">
-                          <span className="text-3xl font-bold text-gray-900">499₽</span>
-                        </div>
-                        <Button className="w-full" variant="outline">Выбрать</Button>
-                      </div>
-                    </div>
-
-                    {/* 3 Months */}
-                    <div className="relative rounded-xl border-2 border-violet-500 bg-violet-50/50 p-4 cursor-pointer transform scale-105 shadow-lg"
-                         onClick={() => handlePayment({ name: '3 Месяца', price: 799 })}>
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-violet-500 text-white px-3 py-0.5 rounded-full text-xs font-bold">
-                        Популярный
-                      </div>
-                      <div className="text-center">
-                        <h4 className="font-semibold text-gray-900">3 Месяца</h4>
-                        <div className="mt-2 mb-4">
-                          <span className="text-3xl font-bold text-gray-900">799₽</span>
-                          <div className="text-xs text-gray-500 line-through">1497₽</div>
-                        </div>
-                        <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white">Выбрать</Button>
-                      </div>
-                    </div>
-
-                    {/* 1 Year */}
-                    <div className="relative rounded-xl border-2 border-gray-100 p-4 hover:border-violet-500 transition-colors cursor-pointer"
-                         onClick={() => handlePayment({ name: '1 Год', price: 2100 })}>
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white px-3 py-0.5 rounded-full text-xs font-bold">
-                        -65%
-                      </div>
-                      <div className="text-center">
-                        <h4 className="font-semibold text-gray-900">1 Год</h4>
-                        <div className="mt-2 mb-4">
-                          <span className="text-3xl font-bold text-gray-900">2100₽</span>
-                          <div className="text-xs text-gray-500 line-through">5988₽</div>
-                        </div>
-                        <Button className="w-full" variant="outline">Выбрать</Button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-center text-xs text-gray-500">
-                    <p>Нажимая кнопку, вы соглашаетесь с условиями использования и политикой конфиденциальности.</p>
-                    <div className="flex items-center justify-center gap-2 mt-2">
-                      <CreditCard className="w-4 h-4" />
-                      <span>Безопасная оплата картой</span>
-                    </div>
-                  </div>
+                  <SubscriptionCheckout
+                    telegramId={telegramId}
+                    compact
+                    onPaid={() => {
+                      setIsSubscriptionModalOpen(false);
+                      queryClient.invalidateQueries(['hasPaid', telegramId]);
+                    }}
+                  />
                 </DialogContent>
               </Dialog>
             </div>
@@ -440,7 +395,7 @@ export default function Profile() {
                   <SelectContent>
                     <SelectItem value="sedentary">Низкая</SelectItem>
                     <SelectItem value="moderate">Умеренная</SelectItem>
-                    <SelectItem value="active">Высокая бытовая</SelectItem>
+                    <SelectItem value="active">Высокая</SelectItem>
                     <SelectItem value="very_active">Очень высокая</SelectItem>
                   </SelectContent>
                 </Select>

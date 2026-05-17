@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { manageProfile } from '@/api/functions';
 import { DailyStats, UserProfile } from '@/api/entities';
 import { motion } from 'framer-motion';
-import { Settings, User } from 'lucide-react';
+import { Settings, User, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { fetchHasPaidSubscription, getTrialDaysRemaining } from '@/utils/subscription';
 import { createPageUrl } from '@/utils';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -33,6 +34,12 @@ export default function Dashboard() {
       return data.profile;
     },
     enabled: !!telegramId
+  });
+
+  const { data: hasPaid = true } = useQuery({
+    queryKey: ['hasPaid', telegramId],
+    queryFn: () => fetchHasPaidSubscription(telegramId),
+    enabled: !!telegramId,
   });
 
   const { data: todayStats } = useQuery({
@@ -166,6 +173,28 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-24">
       <div className="max-w-md mx-auto px-4 py-6">
+        {!hasPaid && profile && (
+          <Link
+            to={createPageUrl('Profile') + '?pay=1'}
+            className="block mb-4 p-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="font-semibold text-sm flex items-center gap-1">
+                  <Crown className="w-4 h-4 text-yellow-300" />
+                  Оформить подписку
+                </p>
+                <p className="text-violet-100 text-xs mt-0.5">
+                  {profile.subscription_end_date
+                    ? `Пробный период: ${getTrialDaysRemaining(profile.subscription_end_date)} дн.`
+                    : 'Откройте оплату в один клик'}
+                </p>
+              </div>
+              <span className="text-sm font-bold shrink-0">от 499₽</span>
+            </div>
+          </Link>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
