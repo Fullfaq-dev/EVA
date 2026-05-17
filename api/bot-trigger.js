@@ -202,7 +202,8 @@ export async function fireEvent(telegramId, eventName, supabase, token, appUrl) 
       console.log(`[trigger] ✓ ${eventName} block${msg.block_id} → ${telegramId}`);
     }
 
-    await new Promise((r) => setTimeout(r, 60));
+    // Пауза между сообщениями — Telegram иногда доставляет пачку не по порядку
+    await new Promise((r) => setTimeout(r, 400));
   }
 
   // Update last_message_sent_at

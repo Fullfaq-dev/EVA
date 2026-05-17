@@ -94,7 +94,48 @@ async function createDefaultReminders(telegramId, supabase) {
   if (error) console.warn('[chat-onboarding] reminders insert:', error.message);
 }
 
-async function saveProfile(telegramId, formData, supabase, token, appUrl) {
+/** Одно итоговое сообщение после сохранения в чате (без дубля воронки). */
+function buildChatCompleteMessage(formData, nutrition) {
+  const name = (formData.full_name || 'друг').trim().split(/\s+/)[0] || 'друг';
+  const waterL = (nutrition.waterNorm / 1000).toFixed(1);
+  return (
+    `🎉 <b>${name}, регистрация завершена!</b>\n\n` +
+    `Спасибо, что заполнили анкету 💗 Теперь рекомендации будут опираться на ваши цели.\n\n` +
+    `🔹 Цель: ${GOAL_LABELS[formData.goal] || formData.goal}\n` +
+    `🔹 КБЖУ: <b>${Math.round(nutrition.dailyCalories)}</b> ккал ` +
+    `(Б:${Math.round(nutrition.dailyProtein)} / Ж:${Math.round(nutrition.dailyFat)} / У:${Math.round(nutrition.dailyCarbs)})\n` +
+    `🔹 Вода: <b>${waterL}</b> л/день 💧\n\n` +
+    `На <b>7 дней</b> активирован бесплатный доступ ко всем возможностям EVA ✨\n\n` +
+    `Отправьте фото еды или напишите в чат — я на связи!`
+  );
+}
+
+/** Помечаем event-сообщения дня 1, чтобы cron/trigger не дублировали после чат-онбординга. */
+async function markActiveOnboardingFunnelSent(telegramId, supabase) {
+  const { data: msgs } = await supabase
+    .from('bot_funnel_messages')
+    .select('id, day_number, block_id, funnel_type')
+    .eq('funnel_type', 'active')
+    .eq('day_number', 1)
+    .in('block_id', ['2', '3'])
+    .in('trigger_event', ['onboarding_completed', 'trial_started']);
+
+  if (!msgs?.length) return;
+
+  const rows = msgs.map((msg) => ({
+    user_telegram_id: telegramId,
+    funnel_message_id: msg.id,
+    funnel_type: msg.funnel_type,
+    day_number: msg.day_number,
+    block_id: msg.block_id,
+    delivery_status: 'skipped',
+    error_message: 'chat_onboarding_complete',
+  }));
+
+  await supabase.from('bot_message_log').insert(rows);
+}
+
+async function saveProfile(telegramId, formData, supabase, token, appUrl, { skipFunnelNotify = false } = {}) {
   const nutrition = calculateNutrition(formData);
 
   const profileData = {
@@ -150,11 +191,17 @@ async function saveProfile(telegramId, formData, supabase, token, appUrl) {
     await createDefaultReminders(telegramId, supabase);
   }
 
-  if (token) {
+  if (token && !skipFunnelNotify) {
     await fireEvent(telegramId, 'onboarding_completed', supabase, token, appUrl);
     await new Promise((r) => setTimeout(r, 1000));
     await fireEvent(telegramId, 'trial_started', supabase, token, appUrl);
   }
+
+  if (skipFunnelNotify) {
+    await markActiveOnboardingFunnelSent(telegramId, supabase);
+  }
+
+  return { nutrition };
 }
 
 // ─── Step prompts ─────────────────────────────────────────────────────────────
@@ -262,18 +309,11 @@ async function sendStepPrompt(chatId, step, data, token, appUrl) {
       break;
 
     case STEPS.RESULT: {
-      const n = calculateNutrition(data);
-      const waterL = (n.waterNorm / 1000).toFixed(1);
       await tgSend(
         chatId,
-        `✨ <b>Ваш план готов!</b>\n\n` +
-          `Цель: ${GOAL_LABELS[data.goal] || data.goal}\n\n` +
-          `🔥 Калории: <b>${n.dailyCalories}</b> ккал\n` +
-          `🥩 Белки: <b>${n.dailyProtein}</b> г\n` +
-          `🧈 Жиры: <b>${n.dailyFat}</b> г\n` +
-          `🌾 Углеводы: <b>${n.dailyCarbs}</b> г\n` +
-          `💧 Вода: <b>${waterL}</b> л/день\n\n` +
-          `Нажмите «Сохранить», чтобы завершить регистрацию.`,
+        `✨ <b>Проверьте анкету</b>\n\n` +
+          `Если всё верно — нажмите «Сохранить профиль». ` +
+          `Я сохраню данные и пришлю ваш персональный план с нормами КБЖУ.`,
         { inline_keyboard: [[{ text: '✅ Сохранить профиль', callback_data: 'ob_save' }]] },
         token
       );
@@ -431,15 +471,11 @@ export async function handleOnboardingCallback(callbackData, chatId, telegramId,
 
   if (callbackData === 'ob_save' && session.step === STEPS.RESULT) {
     try {
-      await saveProfile(telegramId, data, supabase, token, appUrl);
+      const { nutrition } = await saveProfile(telegramId, data, supabase, token, appUrl, {
+        skipFunnelNotify: true,
+      });
       await clearSession(telegramId, supabase);
-      await tgSend(
-        chatId,
-        `🎉 <b>Регистрация завершена!</b>\n\n` +
-          `Профиль сохранён. Теперь можете отправлять фото еды или задавать вопросы — я на связи!`,
-        null,
-        token
-      );
+      await tgSend(chatId, buildChatCompleteMessage(data, nutrition), null, token);
     } catch (err) {
       console.error('[chat-onboarding] save error:', err.message);
       await tgSend(chatId, '❌ Ошибка сохранения. Попробуйте ещё раз или заполните анкету в приложении.', null, token);
