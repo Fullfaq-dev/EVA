@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import BottomNav from '@/components/navigation/BottomNav';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { SubscriptionGuard } from '@/components/auth/SubscriptionGuard';
+import { StartParamHandler } from '@/components/subscription/StartParamHandler';
 
 export default function Layout({ children, currentPageName }) {
   const showNav = ['Dashboard', 'FoodDiary', 'Stats', 'Profile', 'Analysis', 'Actions'].includes(currentPageName);
@@ -23,6 +24,7 @@ export default function Layout({ children, currentPageName }) {
   
   return (
     <AuthGuard>
+      <StartParamHandler />
       <div className="min-h-screen bg-gray-50">
         <style>{`
           :root {

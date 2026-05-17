@@ -25,6 +25,7 @@ export function buildMarkup(msg, appUrl) {
     open_app: appUrl,
     subscribe: `${appUrl}?startapp=subscribe`,
     restore_access: `${appUrl}?startapp=subscribe`,
+    open_water_reminders: `${appUrl}?startapp=water_reminders`,
   };
   const targetUrl = urlMap[msg.button_action] || appUrl;
 

@@ -27,6 +27,9 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/components/auth/useTelegramAuth';
+import { fetchHasPaidSubscription } from '@/utils/subscription';
+import { SubscriptionCheckout } from '@/components/subscription/SubscriptionCheckout';
+import { Lock } from 'lucide-react';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import {
   Accordion,
@@ -44,6 +47,12 @@ export default function Analysis() {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
+
+  const { data: hasPaid = false, isLoading: paidLoading } = useQuery({
+    queryKey: ['hasPaid', telegramId],
+    queryFn: () => fetchHasPaidSubscription(telegramId),
+    enabled: !!telegramId,
+  });
 
   const { data: analyses = [], isLoading } = useQuery({
     queryKey: ['analyses', telegramId],
@@ -212,6 +221,23 @@ export default function Analysis() {
         <div className="text-center">
           <p className="text-red-500 mb-2">Ошибка авторизации</p>
           <p className="text-gray-600 text-sm">{authError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!paidLoading && !hasPaid) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-6 shadow-lg">
+          <div className="w-14 h-14 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7 text-violet-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 text-center mb-2">Анализы — Premium</h2>
+          <p className="text-gray-600 text-sm text-center mb-6">
+            Интерпретация медицинских анализов доступна по платной подписке.
+          </p>
+          <SubscriptionCheckout telegramId={telegramId} />
         </div>
       </div>
     );
